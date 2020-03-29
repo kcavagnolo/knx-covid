@@ -20,8 +20,12 @@ curl --request GET 'https://api.covid19api.com/dayone/country/us/status/confirme
 
 ## Credits
 
-* COVID case data -- https://github.com/pomber/covid19
-* Tennessee county boundaries -- https://tn-tnmap.opendata.arcgis.com/datasets/TWRA::tn-counties
+- [COVID case data](https://github.com/pomber/covid19)
+- [Tennessee county boundaries](https://tn-tnmap.opendata.arcgis.com/datasets/TWRA::tn-counties)
+- [Hospital Referral Regions( HRR)](https://hub.arcgis.com/datasets/fedmaps::hospital-referral-regions)
+- [Mapbox](https://www.mapbox.com/about/maps/)
+- [OpenStreetMap](http://www.openstreetmap.org/about/)
+- [Mapbox contributor plugins](https://docs.mapbox.com/mapbox-gl-js/plugins/)
 
 ## Contributing
 
@@ -30,4 +34,7 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 Please make sure to update tests as appropriate.
 
 ## License
-[MIT](https://choosealicense.com/licenses/mit/)
+
+This work is licensed under a [Creative Commons Attribution-ShareAlike 4.0 International License](LICENSE).
+
+![Creative Commons License](https://i.creativecommons.org/l/by-sa/4.0/88x31.png "license")
