@@ -2,6 +2,8 @@
 
 What's the story with COVID19 cases in Knoxville Metro?
 
+v0.1.0
+
 ## Installation
 
 Use the package manager [pip](https://pip.pypa.io/en/stable/) to install foobar.
