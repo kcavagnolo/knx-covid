@@ -21,7 +21,7 @@ if (!mapboxgl.supported()) {
     var minutes = 60;
     var volOrange = '#FF8200';
     var volWhite = '#FFFFFF';
-    var volGray = '#000000';
+    var volGray = '#58595B';
     var hoverId = null;
     var popup = new mapboxgl.Popup({
         closeButton: false,
@@ -184,6 +184,9 @@ if (!mapboxgl.supported()) {
 
         // add counties
         addCounties();
+
+        // add HRR
+        addHrr();
 
         // add isochrone
         getIso();
