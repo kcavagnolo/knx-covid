@@ -2,7 +2,7 @@
 
 What's the story with COVID19 cases in Knoxville Metro?
 
-v0.1.0
+vversion: v0.2.0
 
 ## Defining Knoxville Metro
 
