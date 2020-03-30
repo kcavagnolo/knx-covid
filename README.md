@@ -13,20 +13,26 @@ Before making an estimate, let us first define what data interests us. In this c
 To estimate the total confirmed COVID19 cases in the Knoxville metro area, I use the simplest population model: [the logistic function](https://en.wikipedia.org/wiki/Logistic_function#In_ecology:_modeling_population_growth). This model has one assumption: [growth of cases is capped by external forces](https://www.khanacademy.org/science/biology/ecology/population-growth-and-regulation/a/exponential-logistic-growth). There are no assumptions on what those forces are, just that they exert an immediate and irreversible influence on the growth rate.
 
 Cumulative Knoxville Metro cases per county per day:
-![Cumulative Knoxville Metro cases per county per day](/analysis/metro-county-cases.png)
+![Cumulative Knoxville Metro cases per county per day](/imgs/metro-county-cases.png)
 
 Cumulative Knoxville Metro cases per day:
-![Cumulative Knoxville Metro cases per day](/analysis/metro-all.png)
+![Cumulative Knoxville Metro cases per day](/imgs/metro-all.png)
 
 Best-fit logistics model for cumulative Knoxville Metro cases per day:
-![Best-fit logistics model for cumulative Knoxville Metro cases per day](/analysis/metro-all-fit.png)
+![Best-fit logistics model for cumulative Knoxville Metro cases per day](/imgs/metro-all-fit.png)
 
 ## Installation
 
-Use the package manager [pip](https://pip.pypa.io/en/stable/) to install foobar.
+Created using Python 3.8.0. Use the package manager [pip](https://pip.pypa.io/en/stable/) to install requirements:
 
 ```bash
-pip install foobar
+pip install -r analysis/requirements
+```
+
+An interactive Jupyter notebook (deprecated) and command line script are provided in [/analysis](/analysis).
+
+```bash
+python3 analysis/knx_metro_covid.py
 ```
 
 ## Usage
