@@ -180,7 +180,7 @@ if (!mapboxgl.supported()) {
                 return response.json();
             })
             .then(function (hospitalData) {
-                console.log(hospitalData);
+                //console.log(hospitalData);
                 map.addSource('hospitals', {
                     'type': 'geojson',
                     'data': hospitalData,

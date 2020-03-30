@@ -4,6 +4,16 @@ What's the story with COVID19 cases in Knoxville Metro?
 
 v0.1.0
 
+## Defining Knoxville Metro
+
+Before making an estimate, let us first define what data interests us. In this case, consider the Knoxville metro area as all locations within a 30 minute or 60 minute drive time, aka, the catchment area. [See details on this map.](https://www.kcavagnolo.com/knx-covid/) The isochrone you see on the map (green overlay) covers several counties (orange outlines; click for name) and the associated hospitals (pink points). The blue dashed line indicates the Hospital Referral Region defined by the [Center for Medicare & Medicaid Services (CMS)](https://www.cms.gov/) and is provided as a reference point to validate regional coverage for healthcare centered on Knoxville.
+
+## Projections
+
+To estimate the total confirmed COVID19 cases in the Knoxville metro area, I use the simplest population model: [the logistic function](https://en.wikipedia.org/wiki/Logistic_function#In_ecology:_modeling_population_growth). This model has one assumption: [growth of cases is capped by external forces](https://www.khanacademy.org/science/biology/ecology/population-growth-and-regulation/a/exponential-logistic-growth). There are no assumptions on what those forces are, just that they exert an immediate and irreversible influence on the growth rate.
+
+![Knoxville Metro cases by county by day](/analysis/metro-county-cases.png)
+
 ## Installation
 
 Use the package manager [pip](https://pip.pypa.io/en/stable/) to install foobar.
