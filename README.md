@@ -2,9 +2,7 @@
 
 What's the story with COVID19 cases in Knoxville Metro?
 
-**LAST UPDATED: Mon Mar 30 15:03:29 EDT 2020**
-
-version: v0.2.0
+version: v0.2.0 -- **Updated on Mon Mar 30 15:03:29 EDT 2020**
 
 ## Defining Knoxville Metro
 
@@ -14,28 +12,35 @@ Before making an estimate, let us first define what data interests us. In this c
 
 To estimate the total confirmed COVID19 cases in the Knoxville metro area, I use the simplest population model: [the logistic function](https://en.wikipedia.org/wiki/Logistic_function#In_ecology:_modeling_population_growth). This model has one assumption: [growth of cases is capped by external forces](https://www.khanacademy.org/science/biology/ecology/population-growth-and-regulation/a/exponential-logistic-growth). There are no assumptions on what those forces are, just that they exert an immediate and irreversible influence on the growth rate.
 
-Cumulative Knoxville Metro cases per county per day:
-![Cumulative Knoxville Metro cases per county per day](/imgs/metro-county-cases.png)
+Best-fit logistic model for cumulative Knoxville Metro cases per day:
+
+![Best-fit logistic model for cumulative Knoxville Metro cases per day](/imgs/metro-all-fit.png)
 
 Cumulative Knoxville Metro cases per day:
+
 ![Cumulative Knoxville Metro cases per day](/imgs/metro-all.png)
 
-Best-fit logistics model for cumulative Knoxville Metro cases per day:
-![Best-fit logistics model for cumulative Knoxville Metro cases per day](/imgs/metro-all-fit.png)
+Cumulative Knoxville Metro cases per county per day:
+
+![Cumulative Knoxville Metro cases per county per day](/imgs/metro-county-cases.png)
 
 ## Installation & Usage
 
-Created using Python 3.8.0. Use the package manager [pip](https://pip.pypa.io/en/stable/) to install requirements:
+Created using Python 3.8.0. Use the package manager [pip](https://pip.pypa.io/en/stable/) to install requirements. I recommend using [`pyenv-virtualenv`](https://github.com/pyenv/pyenv-virtualenv) so you don't mess up your Python env.
 
 ```bash
-pip install -r analysis/requirements
+cd analysis
+pip install -r requirements
 ```
 
-An interactive Jupyter notebook (deprecated) and command line script are provided in [/analysis](/analysis).
+A command line script is provided in [/analysis](/analysis):
 
 ```bash
-python3 analysis/knx_metro_covid.py
+cd analysis
+python3 knx_metro_covid.py
 ```
+
+A deprecated interactive Jupyter notebook is also in the `analysis/` directory.
 
 ## Credits
 

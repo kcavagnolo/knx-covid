@@ -101,7 +101,6 @@ ratio = max(y_fit) / max(y)
 # when do new cases fall below ~1 (i.e., < 0.5)?
 no_new_cases = 0
 case_diff = np.diff(y_fit)
-print(case_diff)
 for i, ndiff in enumerate(case_diff):
     if ndiff < 0.5 and i > x[-1]:
         no_new_cases = i
@@ -132,11 +131,12 @@ plt.savefig('../imgs/metro-all.png')
 
 # plot projected cases
 fig, ax = plt.subplots(figsize=(14, 9))
-plt.scatter(x, y, label='Confirmed Cases')
-plt.plot(x_fit, y_fit, 'r-', label='Projection')
+plt.scatter(x, y, label='Confirmed')
+plt.plot(x_fit, y_fit, 'r-', label='Projected')
+plt.xticks(np.arange(min(x_fit), max(x_fit)+1, 7.0))
 plt.legend()
 plt.xlabel('Days from first reported case')
-plt.ylabel('Total Confirmed Cases')
+plt.ylabel('Total Cases')
 plt.title('Projected Knoxville Metro COVID19 Cases -- Updated: {}'.format(now))
 ax.annotate('Max Cases: {:.0f}\nApprox. {:.1f}x current\nRollover Date: {}'.format(max(y_fit), ratio, end_date),
             xytext=(0.75, 0.75), textcoords='figure fraction',
