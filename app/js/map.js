@@ -19,7 +19,7 @@ if (!mapboxgl.supported()) {
     var lat = 35.960750;
     var profile = 'driving';
     var minutes = 60;
-    var colors = ['#e66101','#fdb863','#b2abd2','#5e3c99']
+    var colors = ['#1b9e77', '#d95f02', '#7570b3', '#e7298a', '#66a61e']
     var hoverId = null;
     var popup = new mapboxgl.Popup({
         closeButton: false,
@@ -28,9 +28,6 @@ if (!mapboxgl.supported()) {
             "top": [0, 10],
             "bottom": [0, -10]
         }
-    });
-    var marker = new mapboxgl.Marker({
-        'color': colors[0]
     });
     var origin = {
         lon: lon,
@@ -183,7 +180,7 @@ if (!mapboxgl.supported()) {
                 return response.json();
             })
             .then(function (hospitalData) {
-                //console.log(hospitalData);
+                console.log(hospitalData);
                 map.addSource('hospitals', {
                     'type': 'geojson',
                     'data': hospitalData,
@@ -201,8 +198,8 @@ if (!mapboxgl.supported()) {
                             "interpolate",
                             ["linear"],
                             ["zoom"],
-                            12, 6,
-                            22, 12
+                            12, 4,
+                            22, 10
                         ],
                         'circle-color': [
                             'case',
@@ -210,16 +207,79 @@ if (!mapboxgl.supported()) {
                             "#ffffff",
                             colors[3]
                         ],
-                        'circle-stroke-color': '#ffffff',
-                        'circle-stroke-width': 1,
                         'circle-opacity': [
                             'case',
                             ['boolean', ['feature-state', 'hover'], false],
                             0.8,
                             1.0
-                        ]
+                        ],
+                        'circle-stroke-color': '#ffffff',
+                        'circle-stroke-width': 0.5
                     }
                 });
+                // hovering stops opens popup and changes symbol
+                map.on('mouseenter', 'hospitals-points', function (e) {
+
+                    // change cursor to indicator
+                    map.getCanvas().style.cursor = 'pointer';
+
+                    // set the html description
+                    var coordinates = e.features[0].geometry.coordinates.slice();
+                    var properties = e.features[0].properties;
+                    var description = '<h3>' + e.features[0].properties.HospitalName + '</h3><p>' +
+                        properties.Address1 + '<br>' +
+                        properties.City + ',' + properties.State + ' ' + properties.PostalCode +
+                        '<br>' +
+                        'Ebola TTX? ' + properties.ebola_ttx +
+                        '</p>'
+                    while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+                        coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+                    }
+
+                    // load the hover popup
+                    popup.setLngLat(coordinates)
+                        .setHTML(description)
+                        .addTo(map);
+
+                    // change the symbol color and opacity
+                    if (e.features.length > 0) {
+                        if (hoverId) {
+                            map.setFeatureState({
+                                source: 'hospitals',
+                                id: hoverId
+                            }, {
+                                hover: false
+                            });
+                        }
+                        hoverId = e.features[0].id;
+                        map.setFeatureState({
+                            source: 'hospitals',
+                            id: hoverId
+                        }, {
+                            hover: true
+                        });
+                    }
+                });
+
+                // no hover reverts state
+                map.on('mouseleave', 'hospitals-points', function () {
+                    if (hoverId) {
+                        map.setFeatureState({
+                            source: 'hospitals',
+                            id: hoverId
+                        }, {
+                            hover: false
+                        });
+                    }
+                    hoverId = null;
+
+                    // change cursor back to pointer
+                    map.getCanvas().style.cursor = '';
+
+                    // remove the hover popup
+                    popup.remove();
+                });
+
             })
             .catch(function (error) {
                 console.log('Looks like there was a problem: \n', error);
@@ -229,14 +289,14 @@ if (!mapboxgl.supported()) {
     // load map
     map.on('load', function () {
 
-        // Initialize the marker at the query coordinates
-        marker.setLngLat(origin).addTo(map);
-
         // add iso
         addIso();
 
         // add counties
         addCounties();
+
+        // add hospitals
+        addHospitals();
 
         // add HRR
         addHrr();

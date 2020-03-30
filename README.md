@@ -24,11 +24,12 @@ curl --request GET 'https://api.covid19api.com/dayone/country/us/status/confirme
 
 - [COVID raw data](https://github.com/CSSEGISandData/COVID-19)
 - [COVID aggregated data](https://github.com/pomber/covid19)
-- [COVID data API](https://covid19api.com/)
+- [COVID aggregated data API](https://covid19api.com/)
 - [Tennessee county boundaries](https://tn-tnmap.opendata.arcgis.com/datasets/TWRA::tn-counties)
-- [Hospital Referral Regions( HRR)](https://hub.arcgis.com/datasets/fedmaps::hospital-referral-regions)
-- [Mapbox](https://www.mapbox.com/about/maps/)
-- [OpenStreetMap](http://www.openstreetmap.org/about/)
+- [Tennessee hospital locations](https://hub.arcgis.com/datasets/TDH::hospitals)
+- [Hospital Referral Regions (HRR)](https://hub.arcgis.com/datasets/fedmaps::hospital-referral-regions)
+- [Mapbox maps](https://www.mapbox.com/about/maps/)
+- [OpenStreetMap road network data](http://www.openstreetmap.org/about/)
 - [Mapbox contributor plugins](https://docs.mapbox.com/mapbox-gl-js/plugins/)
 
 ## Contributing
