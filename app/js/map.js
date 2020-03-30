@@ -19,9 +19,7 @@ if (!mapboxgl.supported()) {
     var lat = 35.960750;
     var profile = 'driving';
     var minutes = 60;
-    var volOrange = '#FF8200';
-    var volWhite = '#FFFFFF';
-    var volGray = '#FF0000';
+    var colors = ['#e66101','#fdb863','#b2abd2','#5e3c99']
     var hoverId = null;
     var popup = new mapboxgl.Popup({
         closeButton: false,
@@ -32,7 +30,7 @@ if (!mapboxgl.supported()) {
         }
     });
     var marker = new mapboxgl.Marker({
-        'color': volOrange
+        'color': colors[0]
     });
     var origin = {
         lon: lon,
@@ -78,7 +76,7 @@ if (!mapboxgl.supported()) {
             'source': 'iso',
             'layout': {},
             'paint': {
-                'fill-color': volOrange,
+                'fill-color': colors[0],
                 'fill-opacity': 0.3
             }
         }, "poi-label");
@@ -86,7 +84,7 @@ if (!mapboxgl.supported()) {
 
     // function to add county boundaries
     function addCounties() {
-        var url = 'https://raw.githubusercontent.com/kcavagnolo/knx-covid/master/data/geojson/tn_county.geojson';
+        var url = 'https://raw.githubusercontent.com/kcavagnolo/knx-covid/master/data/geojson/tn-counties.geojson';
         fetch(url)
             .then(function (response) {
                 if (!response.ok) {
@@ -106,7 +104,7 @@ if (!mapboxgl.supported()) {
                     'type': 'line',
                     'source': 'tn-county',
                     'paint': {
-                        'line-color': volWhite,
+                        'line-color': colors[1],
                         'line-width': 1
                     },
                     'filter': ['==', '$type', 'Polygon']
@@ -116,7 +114,7 @@ if (!mapboxgl.supported()) {
                     'type': 'fill',
                     'source': 'tn-county',
                     'paint': {
-                        'fill-color': volWhite,
+                        'fill-color': colors[1],
                         'fill-opacity': 0.0
                     },
                     'filter': ['==', '$type', 'Polygon']
@@ -162,11 +160,65 @@ if (!mapboxgl.supported()) {
                     'type': 'line',
                     'source': 'hrr',
                     'paint': {
-                        'line-color': volGray,
-                        'line-dasharray': [10, 4],
-                        'line-width': 1
+                        'line-color': colors[2],
+                        'line-width': 1,
+                        'line-dasharray': [5, 5]
                     },
                     'filter': ['==', '$type', 'Polygon']
+                });
+            })
+            .catch(function (error) {
+                console.log('Looks like there was a problem: \n', error);
+            });
+    }
+
+    // function to add county boundaries
+    function addHospitals() {
+        var url = 'https://raw.githubusercontent.com/kcavagnolo/knx-covid/master/data/geojson/tn-hospitals.geojson';
+        fetch(url)
+            .then(function (response) {
+                if (!response.ok) {
+                    throw Error(response.statusText);
+                }
+                return response.json();
+            })
+            .then(function (hospitalData) {
+                //console.log(hospitalData);
+                map.addSource('hospitals', {
+                    'type': 'geojson',
+                    'data': hospitalData,
+                    'generateId': true
+                });
+                map.addLayer({
+                    'id': 'hospitals-points',
+                    'type': 'circle',
+                    'source': 'hospitals',
+                    'layout': {
+                        'visibility': 'visible',
+                    },
+                    'paint': {
+                        'circle-radius': [
+                            "interpolate",
+                            ["linear"],
+                            ["zoom"],
+                            12, 6,
+                            22, 12
+                        ],
+                        'circle-color': [
+                            'case',
+                            ['boolean', ['feature-state', 'hover'], false],
+                            "#ffffff",
+                            colors[3]
+                        ],
+                        'circle-stroke-color': '#ffffff',
+                        'circle-stroke-width': 1,
+                        'circle-opacity': [
+                            'case',
+                            ['boolean', ['feature-state', 'hover'], false],
+                            0.8,
+                            1.0
+                        ]
+                    }
                 });
             })
             .catch(function (error) {
