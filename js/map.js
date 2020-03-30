@@ -21,7 +21,7 @@ if (!mapboxgl.supported()) {
     var minutes = 60;
     var volOrange = '#FF8200';
     var volWhite = '#FFFFFF';
-    var volGray = '#58595B';
+    var volGray = '#FF0000';
     var hoverId = null;
     var popup = new mapboxgl.Popup({
         closeButton: false,
@@ -159,11 +159,12 @@ if (!mapboxgl.supported()) {
                 });
                 map.addLayer({
                     'id': 'hrr-fills',
-                    'type': 'fill',
+                    'type': 'line',
                     'source': 'hrr',
                     'paint': {
-                        'fill-color': volGray,
-                        'fill-opacity': 0.1
+                        'line-color': volGray,
+                        'line-dasharray': [10, 4],
+                        'line-width': 1
                     },
                     'filter': ['==', '$type', 'Polygon']
                 });

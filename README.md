@@ -14,7 +14,7 @@ pip install foobar
 
 ## Usage
 
-Use the [Free API](https://covid19api.com/):
+Use the COVID free API to get aggregated data:
 
 ```bash
 curl --request GET 'https://api.covid19api.com/dayone/country/us/status/confirmed' | jq | grep -B 2 -A 6 "Tennessee, Knox"
@@ -22,7 +22,9 @@ curl --request GET 'https://api.covid19api.com/dayone/country/us/status/confirme
 
 ## Credits
 
-- [COVID case data](https://github.com/pomber/covid19)
+- [COVID raw data](https://github.com/CSSEGISandData/COVID-19)
+- [COVID aggregated data](https://github.com/pomber/covid19)
+- [COVID data API](https://covid19api.com/)
 - [Tennessee county boundaries](https://tn-tnmap.opendata.arcgis.com/datasets/TWRA::tn-counties)
 - [Hospital Referral Regions( HRR)](https://hub.arcgis.com/datasets/fedmaps::hospital-referral-regions)
 - [Mapbox](https://www.mapbox.com/about/maps/)
