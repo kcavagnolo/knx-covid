@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import sys
+import datetime as dt
 import json
+
 import matplotlib.font_manager
 import matplotlib.pyplot as plt
 import numpy as np
@@ -50,7 +53,6 @@ for county in metro_data[drive_time]:
     knx_metro_fips.append(
         fips_df[(fips_df['county_name'] == county)
                 & (fips_df['state_abbr'] == 'tn')]['fips'].values[0])
-print('Knoxville Metro FIPS: {}'.format(knx_metro_fips))
 
 # read NY Times covid data set
 ny_times_datafile = datadir + 'ny-times/us-counties.csv'
@@ -67,28 +69,18 @@ ny_times_df['fips'] = ny_times_df['fips'].astype('int')
 
 # filter for data in KNX metro fips
 knx_df = ny_times_df[ny_times_df['fips'].isin(knx_metro_fips)]
-
-# plot cases per county per day
-plt.figure(figsize=(14, 9))
-ax = sns.lineplot(x='date', y='cases', hue='county', markers=True, dashes=False, data=knx_df)
-plt.legend(bbox_to_anchor=(1, 1), loc=2)
-plt.xlabel('Date [YYYY-MM-DD]')
-plt.ylabel('Total Confirmed Cases')
-plt.title('Knoxville Metro COVID19 Cases by County')
-plt.savefig('../imgs/metro-county-cases.png')
-
-# plot aggregate cases per day for KNX metro
-plt.figure(figsize=(14, 9))
 case_series = knx_df.groupby(knx_df.date.dt.date)['cases'].sum()
-case_series.plot(kind='bar')
-plt.xlabel('Date [YYYY-MM-DD]')
-plt.ylabel('Total Confirmed Cases')
-plt.title('Knoxville Metro COVID19 Cases')
-plt.savefig('../imgs/metro-all.png')
 
 # select dates and cases as arrays
 x = [n for n, _ in enumerate(case_series.index)]
 y = case_series.values
+
+# project an extra n days of linear growth
+ndays = 0
+growth_rate = 1.2
+for _ in range(0, ndays):
+    x = np.append(x, x[-1] + 1)
+    y = np.append(y, y[-1] * growth_rate)
 
 # scale case number for fitting
 scaler = MinMaxScaler()
@@ -97,26 +89,59 @@ y_scaled = y_scaled.reshape(1, -1)[0]
 
 # use scipy opt to fit logistic
 popt, pcov = opt.curve_fit(logifunc, x, y_scaled, maxfev=100000)
-x_fit = np.linspace(0, 30, num=200)
+days_out = int(x[-1] + 30)
+x_fit = np.linspace(0, days_out, num=days_out)
 y_fit = logifunc(x_fit, *popt)
 
 # reverse the scaling
 y_fit = y_fit.reshape(-1, 1)
 y_fit = scaler.inverse_transform(y_fit).reshape(1, -1)[0]
+ratio = max(y_fit) / max(y)
+
+# when do new cases fall below ~1 (i.e., < 0.5)?
+no_new_cases = 0
+case_diff = np.diff(y_fit)
+print(case_diff)
+for i, ndiff in enumerate(case_diff):
+    if ndiff < 0.5 and i > x[-1]:
+        no_new_cases = i
+        break
+end_date = case_series.index[-1] + dt.timedelta(days=no_new_cases)
+
+# updated date for labeling figures
+now = dt.datetime.now().replace(microsecond=0).isoformat()
+
+# plot cases per county per day
+plt.figure(figsize=(14, 9))
+ax = sns.lineplot(x='date', y='cases', hue='county', markers=True, dashes=False, data=knx_df)
+plt.legend(bbox_to_anchor=(1, 1), loc=2)
+plt.xlabel('Date [YYYY-MM-DD]')
+plt.ylabel('Total Confirmed Cases')
+plt.title('Knoxville Metro COVID19 Cases by County -- Updated: {}'.format(now))
+plt.tight_layout()
+plt.savefig('../imgs/metro-county-cases.png')
+
+# plot aggregate cases per day for KNX metro
+plt.figure(figsize=(14, 9))
+case_series.plot(kind='bar')
+plt.xlabel('Date [YYYY-MM-DD]')
+plt.ylabel('Total Confirmed Cases')
+plt.title('Knoxville Metro COVID19 Cases -- Updated: {}'.format(now))
+plt.tight_layout()
+plt.savefig('../imgs/metro-all.png')
 
 # plot projected cases
 fig, ax = plt.subplots(figsize=(14, 9))
-plt.scatter(x, y, label='Case Data')
-plt.plot(x_fit, y_fit, 'r-', label='Fitted function')
+plt.scatter(x, y, label='Confirmed Cases')
+plt.plot(x_fit, y_fit, 'r-', label='Projection')
 plt.legend()
 plt.xlabel('Days from first reported case')
 plt.ylabel('Total Confirmed Cases')
-plt.title('Knoxville Metro COVID19 Cases')
-ax.annotate('Max Cases: ~{}'.format(round(max(y_fit))),
-            xy=(x_fit[-1], y_fit[-1]),
-            xycoords='data',
-            xytext=(25, 85),
+plt.title('Projected Knoxville Metro COVID19 Cases -- Updated: {}'.format(now))
+ax.annotate('Max Cases: {:.0f}\nApprox. {:.1f}x current\nRollover Date: {}'.format(max(y_fit), ratio, end_date),
+            xytext=(0.75, 0.75), textcoords='figure fraction',
+            horizontalalignment='right', verticalalignment='top',
+            xy=(x_fit[no_new_cases], y_fit[no_new_cases]), xycoords='data',
             arrowprops=dict(facecolor='black', shrink=0.05))
-ratio = max(y_fit) / max(y)
-ax.text(25, 80, "Approx. {}x current".format(round(ratio, 1)))
+plt.tight_layout()
 plt.savefig('../imgs/metro-all-fit.png')

@@ -23,7 +23,7 @@ Cumulative Knoxville Metro cases per day:
 Best-fit logistics model for cumulative Knoxville Metro cases per day:
 ![Best-fit logistics model for cumulative Knoxville Metro cases per day](/imgs/metro-all-fit.png)
 
-## Installation
+## Installation & Usage
 
 Created using Python 3.8.0. Use the package manager [pip](https://pip.pypa.io/en/stable/) to install requirements:
 
@@ -35,14 +35,6 @@ An interactive Jupyter notebook (deprecated) and command line script are provide
 
 ```bash
 python3 analysis/knx_metro_covid.py
-```
-
-## Usage
-
-Use the COVID free API to get aggregated data:
-
-```bash
-curl --request GET 'https://api.covid19api.com/dayone/country/us/status/confirmed' | jq | grep -B 2 -A 6 "Tennessee, Knox"
 ```
 
 ## Credits
@@ -59,7 +51,7 @@ curl --request GET 'https://api.covid19api.com/dayone/country/us/status/confirme
 
 ## Contributing
 
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change. Please make sure to update tests as appropriate.
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
 ## License
 
