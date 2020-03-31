@@ -38,6 +38,7 @@ logging.getLogger('').addHandler(console)
 log = logging.getLogger()
 
 # matplotlib plotting style
+log.info("# Loading fonts")
 matplotlib.font_manager.findSystemFonts(fontpaths=None, fontext='ttf')
 plt.rcParams['font.family'] = 'sans-serif'
 plt.rcParams['font.sans-serif'] = 'Open Sans'
@@ -212,7 +213,7 @@ def main():
     plt.legend(bbox_to_anchor=(1, 1), loc=2)
     plt.xlabel('Date [YYYY-MM-DD]')
     plt.ylabel('Total Confirmed Cases')
-    plt.title('Knoxville Metro COVID19 Cases by County -- Updated: {}'.format(time_now()))
+    plt.title('Knoxville Metro COVID19 Cumulative Cases by County -- Updated: {}'.format(time_now()))
     plt.tight_layout()
     plt.savefig(os.path.join(imgdir, 'metro-county-cases.png'))
 
@@ -221,7 +222,7 @@ def main():
     case_series.plot(kind='bar')
     plt.xlabel('Date [YYYY-MM-DD]')
     plt.ylabel('Total Confirmed Cases')
-    plt.title('Knoxville Metro COVID19 Cases -- Updated: {}'.format(time_now()))
+    plt.title('Knoxville Metro COVID19 Cumulative Cases -- Updated: {}'.format(time_now()))
     plt.tight_layout()
     plt.savefig(os.path.join(imgdir, 'metro-all.png'))
 
@@ -233,7 +234,7 @@ def main():
     plt.legend()
     plt.xlabel('Days from first reported case')
     plt.ylabel('Total Cases')
-    plt.title('Projected Knoxville Metro COVID19 Cases -- Updated: {}'.format(time_now()))
+    plt.title('Knoxville Metro COVID19 Projected Cumulative Cases -- Updated: {}'.format(time_now()))
     ax.annotate('Max Cases: {:.0f}\nApprox. {:.1f}x current\nRollover Date: {}'.format(max(y_fit), ratio, end_date),
                 xytext=(0.75, 0.75), textcoords='figure fraction',
                 horizontalalignment='right', verticalalignment='top',
@@ -245,7 +246,7 @@ def main():
     # plot forecasted daily cases
     fig1 = m.plot(forecast)
     plt.xlabel('Date [YYYY-MM-DD]')
-    plt.ylabel('Total Confirmed Cases')
+    plt.ylabel('Total Cases')
     plt.title('Knoxville Metro COVID19 Forecasted Daily New Cases -- Updated: {}'.format(time_now()))
     plt.tight_layout()
     plt.savefig(os.path.join(imgdir, 'metro-all-forecasted.png'))
