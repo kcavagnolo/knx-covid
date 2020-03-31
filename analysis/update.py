@@ -16,6 +16,7 @@ import pandas as pd
 import scipy.optimize as opt
 import seaborn as sns
 from fbprophet import Prophet
+from fbprophet.plot import add_changepoints_to_plot
 from sklearn.preprocessing import MinMaxScaler
 
 # import traceback
@@ -91,6 +92,7 @@ def parse_arguments():
     parser.add_argument("-nd", "--num-days", type=int, default=0, help="Number of days to add linear growth")
     parser.add_argument("-gr", "--growth-rate", type=float, default=1.15, help="Linear growth rate")
     parser.add_argument("-th", "--time-horizon", type=int, default=30, help="Number of days to look forward")
+    parser.add_argument("-pc", "--population", type=float, default=1e6, help="KNX metro population")
     args = parser.parse_args()
     return args
 
@@ -119,6 +121,7 @@ def main():
     ndays = args.num_days
     growth_rate = args.growth_rate
     time_horizon = args.time_horizon
+    knx_capacity = args.population
 
     # file definitions
     fips_datafile = os.path.join(datadir, 'csv/fips.csv')
@@ -205,7 +208,23 @@ def main():
     m = Prophet()
     m.fit(prophet_df)
     future = m.make_future_dataframe(periods=days_out)
-    forecast = m.predict(future)
+    daily_forecast = m.predict(future)
+
+    # forecast unabated cases with logistic growth
+    all_cases = knx_df.groupby(knx_df.date.dt.date)['cases'].sum()
+    prophet_df = all_cases.to_frame().reset_index().fillna(0)
+    prophet_df.columns = ['ds', 'y']
+    prophet_df['y'] = np.log(prophet_df['y'])
+    prophet_df = prophet_df.replace([np.inf, -np.inf], 0)
+    capacity = np.log(knx_capacity)
+    prophet_df['cap'] = capacity
+    prophet_df['floor'] = 0.0
+    m = Prophet(growth='logistic', interval_width=0.95)
+    m.fit(prophet_df)
+    future = m.make_future_dataframe(periods=days_out)
+    future['cap'] = capacity
+    future['floor'] = 0.0
+    worst_forecast = m.predict(future)
 
     # plot cases per county per day
     log.info("# Creating figures")
@@ -216,7 +235,7 @@ def main():
     plt.ylabel('Total Confirmed Cases')
     plt.title('Knoxville Metro COVID19 Cumulative Cases by County -- Updated: {}'.format(time_now()))
     plt.tight_layout()
-    plt.savefig(os.path.join(imgdir, 'metro-county-cases.png'))
+    plt.savefig(os.path.join(imgdir, 'metro-cases-county.png'))
 
     # plot aggregate cases per day for KNX metro
     plt.figure(figsize=(14, 9))
@@ -225,7 +244,7 @@ def main():
     plt.ylabel('Total Confirmed Cases')
     plt.title('Knoxville Metro COVID19 Cumulative Cases -- Updated: {}'.format(time_now()))
     plt.tight_layout()
-    plt.savefig(os.path.join(imgdir, 'metro-all.png'))
+    plt.savefig(os.path.join(imgdir, 'metro-cases-all.png'))
 
     # plot projected cases
     fig, ax = plt.subplots(figsize=(14, 9))
@@ -242,21 +261,34 @@ def main():
                 xy=(x_fit[no_new_cases], y_fit[no_new_cases]), xycoords='data',
                 arrowprops=dict(facecolor='black', shrink=0.05))
     plt.tight_layout()
-    plt.savefig(os.path.join(imgdir, 'metro-all-fit.png'))
+    plt.savefig(os.path.join(imgdir, 'metro-cases-all-fit-best.png'))
 
     # plot forecasted daily cases
-    fig1 = m.plot(forecast)
+    plt.figure(figsize=(14, 9))
+    fig1 = m.plot(daily_forecast)
+    a = add_changepoints_to_plot(fig1.gca(), m, daily_forecast)
     plt.xlabel('Date [YYYY-MM-DD]')
-    plt.ylabel('Total Cases')
+    plt.ylabel('Total Cases [ln]')
     plt.title('Knoxville Metro COVID19 Forecasted Daily New Cases -- Updated: {}'.format(time_now()))
     plt.tight_layout()
-    plt.savefig(os.path.join(imgdir, 'metro-all-forecasted.png'))
+    plt.savefig(os.path.join(imgdir, 'metro-cases-all-daily-forecasted.png'))
 
-    # plot forecasted daily cases
-    fig2 = m.plot_components(forecast)
+    # plot forecasted daily cases components
+    plt.figure(figsize=(14, 9))
+    fig2 = m.plot_components(daily_forecast)
     plt.title('Knoxville Metro COVID19 Forecasted Daily New Cases Components -- Updated: {}'.format(time_now()))
     plt.tight_layout()
-    plt.savefig(os.path.join(imgdir, 'metro-all-forecasted-components.png'))
+    plt.savefig(os.path.join(imgdir, 'metro-cases-all-daily-forecasted-components.png'))
+
+    # plot forecasted daily cases components
+    plt.figure(figsize=(14, 9))
+    fig3 = m.plot(worst_forecast)
+    a = add_changepoints_to_plot(fig1.gca(), m, worst_forecast)
+    plt.xlabel('Date [YYYY-MM-DD]')
+    plt.ylabel('ln(Total Cases)')
+    plt.title('Knoxville Metro COVID19 Forecasted Cumulative Cases -- Updated: {}'.format(time_now()))
+    plt.tight_layout()
+    plt.savefig(os.path.join(imgdir, 'metro-cases-all-fit-worst.png'))
 
     # update the readme
     log.info("# Updating README")

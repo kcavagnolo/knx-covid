@@ -2,7 +2,7 @@
 
 What's the story with COVID19 cases in Knoxville Metro?
 
-**Updated on 2020-03-31T15:05:58.019910+00:00**
+**Updated on 2020-03-31T16:03:42.411158+00:00**
 
 ## Defining Knoxville Metro
 
@@ -12,19 +12,25 @@ Before making an estimate, let us first define what data interests us. In this c
 
 To estimate the total confirmed COVID19 cases in the Knoxville metro area, I use the simplest population model: [the logistic function](https://en.wikipedia.org/wiki/Logistic_function#In_ecology:_modeling_population_growth). This model has one assumption: [growth of cases is capped by external forces](https://www.khanacademy.org/science/biology/ecology/population-growth-and-regulation/a/exponential-logistic-growth). There are no assumptions on what those forces are, just that they exert an immediate and irreversible influence on the growth rate.
 
-![Knoxville Metro COVID19 Projected Cumulative Cases](/imgs/metro-all-fit.png)
+Best case scenario...
+![Knoxville Metro COVID19 Projected Cumulative Cases](/imgs/metro-cases-all-fit-best.png)
 
 ---
 
-![Knoxville Metro COVID19 Forecasted Daily New Cases](/imgs/metro-all-forecasted.png)
+Worst case scenario...
+![Knoxville Metro COVID19 Projected Cumulative Cases](/imgs/metro-cases-all-fit-worst.png)
 
 ---
 
-![Knoxville Metro COVID19 Cumulative Cases](/imgs/metro-all.png)
+![Knoxville Metro COVID19 Forecasted Daily New Cases](/imgs/metro-cases-all-daily-forecasted.png)
 
 ---
 
-![Knoxville Metro COVID19 Cumulative Cases by County](/imgs/metro-county-cases.png)
+![Knoxville Metro COVID19 Cumulative Cases](/imgs/metro-cases-all.png)
+
+---
+
+![Knoxville Metro COVID19 Cumulative Cases by County](/imgs/metro-cases-county.png)
 
 ## Installation & Usage
 
