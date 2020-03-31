@@ -8,7 +8,6 @@ import logging
 import os
 import sys
 import time
-from fbprophet import Prophet
 
 import matplotlib.font_manager
 import matplotlib.pyplot as plt
@@ -16,6 +15,7 @@ import numpy as np
 import pandas as pd
 import scipy.optimize as opt
 import seaborn as sns
+from fbprophet import Prophet
 from sklearn.preprocessing import MinMaxScaler
 
 # import traceback
@@ -124,6 +124,7 @@ def main():
     fips_datafile = os.path.join(datadir, 'csv/fips.csv')
     metro_datafile = os.path.join(datadir, 'json/metro.json')
     ny_times_datafile = os.path.join(datadir, 'ny-times/us-counties.csv')
+    readme_file = os.path.join(os.path.dirname(__file__), '../README.md')
 
     # read fips county data
     log.info("# Processing FIPS")
@@ -256,6 +257,16 @@ def main():
     plt.title('Knoxville Metro COVID19 Forecasted Daily New Cases Components -- Updated: {}'.format(time_now()))
     plt.tight_layout()
     plt.savefig(os.path.join(imgdir, 'metro-all-forecasted-components.png'))
+
+    # update the readme
+    log.info("# Updating README")
+    current = '**Updated on'
+    updated = "**Updated on {}**\n".format(time_now())
+    with open(readme_file, 'r') as f:
+        text = f.readlines()
+        new_text = "".join([line if current not in line else updated for line in text])
+    with open(readme_file, 'w') as f:
+        f.write(new_text)
 
 
 if __name__ == "__main__":
