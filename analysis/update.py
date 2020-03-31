@@ -101,6 +101,35 @@ def logifunc(x, a, x0, k):
     return a / (1. + np.exp(-k * (x - x0)))
 
 
+def daily_fb_forecast(df, d):
+    cases = df.groupby(df.date.dt.date)['cases'].sum().diff()
+    df = cases.to_frame().reset_index().fillna(0)
+    df.columns = ['ds', 'y']
+    m = Prophet(interval_width=0.95)
+    m.fit(df)
+    future = m.make_future_dataframe(periods=d)
+    pred = m.predict(future)
+    return m, pred
+
+
+def worst_fb_forecast(df, c, d):
+    cases = df.groupby(df.date.dt.date)['cases'].sum()
+    df = cases.to_frame().reset_index().fillna(0)
+    df.columns = ['ds', 'y']
+    df['y'] = np.log(df['y'])
+    df = df.replace([np.inf, -np.inf], 0)
+    capacity = np.log(c)
+    df['cap'] = capacity
+    df['floor'] = 0.0
+    m = Prophet(growth='logistic', interval_width=0.95)
+    m.fit(df)
+    future = m.make_future_dataframe(periods=d)
+    future['cap'] = capacity
+    future['floor'] = 0.0
+    pred = m.predict(future)
+    return m, pred
+
+
 def main():
     """
     The main program that updates projections
@@ -202,29 +231,10 @@ def main():
     end_date = case_series.index[-1] + dt.timedelta(days=no_new_cases)
 
     # forecast daily cases
-    daily_cases = knx_df.groupby(knx_df.date.dt.date)['cases'].sum().diff()
-    prophet_df = daily_cases.to_frame().reset_index().fillna(0)
-    prophet_df.columns = ['ds', 'y']
-    m = Prophet()
-    m.fit(prophet_df)
-    future = m.make_future_dataframe(periods=days_out)
-    daily_forecast = m.predict(future)
+    daily_model, daily_forecast = daily_fb_forecast(knx_df, days_out)
 
     # forecast unabated cases with logistic growth
-    all_cases = knx_df.groupby(knx_df.date.dt.date)['cases'].sum()
-    prophet_df = all_cases.to_frame().reset_index().fillna(0)
-    prophet_df.columns = ['ds', 'y']
-    prophet_df['y'] = np.log(prophet_df['y'])
-    prophet_df = prophet_df.replace([np.inf, -np.inf], 0)
-    capacity = np.log(knx_capacity)
-    prophet_df['cap'] = capacity
-    prophet_df['floor'] = 0.0
-    m = Prophet(growth='logistic', interval_width=0.95)
-    m.fit(prophet_df)
-    future = m.make_future_dataframe(periods=days_out)
-    future['cap'] = capacity
-    future['floor'] = 0.0
-    worst_forecast = m.predict(future)
+    worst_model, worst_forecast = worst_fb_forecast(knx_df, knx_capacity, days_out)
 
     # plot cases per county per day
     log.info("# Creating figures")
@@ -246,7 +256,7 @@ def main():
     plt.tight_layout()
     plt.savefig(os.path.join(imgdir, 'metro-cases-all.png'))
 
-    # plot projected cases
+    # plot best scenario
     fig, ax = plt.subplots(figsize=(14, 9))
     plt.scatter(x, y, label='Confirmed')
     plt.plot(x_fit, y_fit, 'r-', label='Projected')
@@ -265,25 +275,18 @@ def main():
 
     # plot forecasted daily cases
     plt.figure(figsize=(14, 9))
-    fig1 = m.plot(daily_forecast)
-    a = add_changepoints_to_plot(fig1.gca(), m, daily_forecast)
+    fig1 = daily_model.plot(daily_forecast)
+    a = add_changepoints_to_plot(fig1.gca(), daily_model, daily_forecast)
     plt.xlabel('Date [YYYY-MM-DD]')
-    plt.ylabel('Total Cases [ln]')
+    plt.ylabel('Total Cases')
     plt.title('Knoxville Metro COVID19 Forecasted Daily New Cases -- Updated: {}'.format(time_now()))
     plt.tight_layout()
     plt.savefig(os.path.join(imgdir, 'metro-cases-all-daily-forecasted.png'))
 
-    # plot forecasted daily cases components
+    # plot worst scenario
     plt.figure(figsize=(14, 9))
-    fig2 = m.plot_components(daily_forecast)
-    plt.title('Knoxville Metro COVID19 Forecasted Daily New Cases Components -- Updated: {}'.format(time_now()))
-    plt.tight_layout()
-    plt.savefig(os.path.join(imgdir, 'metro-cases-all-daily-forecasted-components.png'))
-
-    # plot forecasted daily cases components
-    plt.figure(figsize=(14, 9))
-    fig3 = m.plot(worst_forecast)
-    a = add_changepoints_to_plot(fig1.gca(), m, worst_forecast)
+    fig3 = worst_model.plot(worst_forecast)
+    a = add_changepoints_to_plot(fig1.gca(), worst_model, worst_forecast)
     plt.xlabel('Date [YYYY-MM-DD]')
     plt.ylabel('ln(Total Cases)')
     plt.title('Knoxville Metro COVID19 Forecasted Cumulative Cases -- Updated: {}'.format(time_now()))

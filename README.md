@@ -2,7 +2,7 @@
 
 What's the story with COVID19 cases in Knoxville Metro?
 
-**Updated on 2020-03-31T16:03:42.411158+00:00**
+**Updated on 2020-03-31T16:25:08.241089+00:00**
 
 ## Defining Knoxville Metro
 
@@ -10,14 +10,16 @@ Before making an estimate, let us first define what data interests us. In this c
 
 ## Projections
 
-To estimate the total confirmed COVID19 cases in the Knoxville metro area, I use the simplest population model: [the logistic function](https://en.wikipedia.org/wiki/Logistic_function#In_ecology:_modeling_population_growth). This model has one assumption: [growth of cases is capped by external forces](https://www.khanacademy.org/science/biology/ecology/population-growth-and-regulation/a/exponential-logistic-growth). There are no assumptions on what those forces are, just that they exert an immediate and irreversible influence on the growth rate.
+To estimate the total confirmed COVID19 cases in the Knoxville metro area, I use the simplest population model: [the logistic function](https://en.wikipedia.org/wiki/Logistic_function#In_ecology:_modeling_population_growth).
 
-Best case scenario...
+Best case scenario: new case growth is [regulated](https://www.khanacademy.org/science/biology/ecology/population-growth-and-regulation/a/exponential-logistic-growth).
+
 ![Knoxville Metro COVID19 Projected Cumulative Cases](/imgs/metro-cases-all-fit-best.png)
 
 ---
 
-Worst case scenario...
+Worst case scenario: new case growth is [unregulated](https://facebook.github.io/prophet/docs/saturating_forecasts.html#forecasting-growth).
+
 ![Knoxville Metro COVID19 Projected Cumulative Cases](/imgs/metro-cases-all-fit-worst.png)
 
 ---
@@ -60,6 +62,7 @@ A deprecated interactive Jupyter notebook is also in the `analysis/` directory.
 - [Mapbox maps](https://www.mapbox.com/about/maps/)
 - [OpenStreetMap road network data](http://www.openstreetmap.org/about/)
 - [Mapbox contributor plugins](https://docs.mapbox.com/mapbox-gl-js/plugins/)
+- [Facebook Prophet forecasting](https://github.com/facebook/prophet)
 
 ## Contributing
 
