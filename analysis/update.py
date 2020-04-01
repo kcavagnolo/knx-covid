@@ -139,6 +139,21 @@ def worst_fb_forecast(df, c, d):
     return m, pred
 
 
+def reorder_legend(df, fig):
+    latest = df[df['date'] == df['date'].max()].sort_values(by=['cases'], ascending=False)['county']
+    latest = [x.lower() for x in latest.unique()]
+    handles, labels = fig.get_legend_handles_labels()
+    legend_entries = {}
+    for lh in zip(labels, handles):
+        legend_entries[lh[0].lower()] = lh[1]
+    labels = []
+    handles = []
+    for c in latest:
+        labels.append(c.capitalize())
+        handles.append(legend_entries[c])
+    return handles, labels
+
+
 def line_format(date):
     """
     Convert a datetime obj to graphic friendly MMMDD format
@@ -253,8 +268,7 @@ def main():
     daily_model, daily_forecast = daily_fb_forecast(knx_df, days_out)
 
     # forecast unabated cases with logistic growth
-    worst_model, worst_forecast = worst_fb_forecast(
-        knx_df, knx_capacity, days_out)
+    worst_model, worst_forecast = worst_fb_forecast(knx_df, knx_capacity, days_out)
 
     # figure setup
     figsize = (14, 9)
@@ -266,9 +280,10 @@ def main():
     # plot cases per county per day
     log.info("# Creating figures")
     plt.subplots(figsize=figsize)
-    sns.lineplot(x='date', y='cases', hue='county',
-                 markers=True, dashes=False, data=knx_df)
-    plt.legend(bbox_to_anchor=(1, 1), loc=2)
+    fig = sns.lineplot(x='date', y='cases', hue='county',
+                     markers=True, dashes=False, data=knx_df)
+    handles, labels = reorder_legend(knx_df, fig)
+    plt.legend(handles, labels, bbox_to_anchor=(1, 1), loc=2)
     plt.xlabel('Date [YYYY-MM-DD]')
     plt.ylabel('Total Confirmed Cases')
     plt.title(
