@@ -140,8 +140,8 @@ def worst_fb_forecast(df, c, d):
 
 
 def reorder_legend(df, fig):
-    latest = df[df['date'] == df['date'].max()].sort_values(by=['cases'], ascending=False)['county']
-    latest = [x.lower() for x in latest.unique()]
+    latest = df[df['date'] == df['date'].max()].sort_values(by=['cases'], ascending=False)
+    latest = zip([x.lower() for x in latest['county'].unique()], [x for x in latest['cases']])
     handles, labels = fig.get_legend_handles_labels()
     legend_entries = {}
     for lh in zip(labels, handles):
@@ -149,8 +149,8 @@ def reorder_legend(df, fig):
     labels = []
     handles = []
     for c in latest:
-        labels.append(c.capitalize())
-        handles.append(legend_entries[c])
+        labels.append(c[0].capitalize() + ': {} case(s)'.format(c[1]))
+        handles.append(legend_entries[c[0]])
     return handles, labels
 
 
