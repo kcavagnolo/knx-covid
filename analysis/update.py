@@ -305,7 +305,7 @@ def main():
     plt.ylabel('Total Cases')
     plt.title(
         'Knoxville Metro COVID19 Projected Cumulative Cases -- Updated: {}'.format(time_now()))
-    ax.annotate('Max Cases: {:.0f}\nApprox. {:.1f}x current\nRollover Date: {}'.format(max(y_fit), ratio, end_date),
+    plt.annotate('Max Cases: {:.0f}\nApprox. {:.1f}x current\nRollover Date: {}'.format(max(y_fit), ratio, end_date),
                 xytext=(0.75, 0.75), textcoords='figure fraction',
                 horizontalalignment='right', verticalalignment='top',
                 xy=(x_fit[no_new_cases], y_fit[no_new_cases]), xycoords='data',
