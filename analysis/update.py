@@ -58,7 +58,8 @@ class FullPaths(argparse.Action):
         :param values:
         :param option_string:
         """
-        setattr(namespace, self.dest, os.path.abspath(os.path.expanduser(values)))
+        setattr(namespace, self.dest, os.path.abspath(
+            os.path.expanduser(values)))
 
 
 def time_now():
@@ -85,14 +86,22 @@ def parse_arguments():
     """
     parser = argparse.ArgumentParser(description="What's the story with COVID19 cases in Knoxville Metro?",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("-d", "--datadir", type=is_dir, help="Data directory", action=FullPaths, required=True)
-    parser.add_argument("-i", "--imgdir", type=is_dir, help="Images directory", action=FullPaths, required=True)
-    parser.add_argument("-v", "--verbose", help="increase verbosity", action="store_true")
-    parser.add_argument("-dt", "--drive-time", type=str, default="60", help="Drive time to use for metro definition")
-    parser.add_argument("-nd", "--num-days", type=int, default=0, help="Number of days to add linear growth")
-    parser.add_argument("-gr", "--growth-rate", type=float, default=1.15, help="Linear growth rate")
-    parser.add_argument("-th", "--time-horizon", type=int, default=30, help="Number of days to look forward")
-    parser.add_argument("-pc", "--population", type=float, default=1e6, help="KNX metro population")
+    parser.add_argument("-d", "--datadir", type=is_dir,
+                        help="Data directory", action=FullPaths, required=True)
+    parser.add_argument("-i", "--imgdir", type=is_dir,
+                        help="Images directory", action=FullPaths, required=True)
+    parser.add_argument("-v", "--verbose",
+                        help="increase verbosity", action="store_true")
+    parser.add_argument("-dt", "--drive-time", type=str, default="60",
+                        help="Drive time to use for metro definition")
+    parser.add_argument("-nd", "--num-days", type=int,
+                        default=0, help="Number of days to add linear growth")
+    parser.add_argument("-gr", "--growth-rate", type=float,
+                        default=1.15, help="Linear growth rate")
+    parser.add_argument("-th", "--time-horizon", type=int,
+                        default=30, help="Number of days to look forward")
+    parser.add_argument("-pc", "--population", type=float,
+                        default=1e6, help="KNX metro population")
     args = parser.parse_args()
     return args
 
@@ -128,6 +137,16 @@ def worst_fb_forecast(df, c, d):
     future['floor'] = 0.0
     pred = m.predict(future)
     return m, pred
+
+
+def line_format(date):
+    """
+    Convert a datetime obj to graphic friendly MMMDD format
+    """
+    label = date.strftime("%b%d")
+    if label == 'Jan':
+        label += f'\n{date.strftime("%Y")}'
+    return label
 
 
 def main():
@@ -234,62 +253,97 @@ def main():
     daily_model, daily_forecast = daily_fb_forecast(knx_df, days_out)
 
     # forecast unabated cases with logistic growth
-    worst_model, worst_forecast = worst_fb_forecast(knx_df, knx_capacity, days_out)
+    worst_model, worst_forecast = worst_fb_forecast(
+        knx_df, knx_capacity, days_out)
+
+    # figure setup
+    figsize = (14, 9)
+    attribution = 'Data from The New York Times, based on reports from state and local health agencies.'
+    attr_fontsize = 10
+    attr_color = '#000000'
+    attr_alpha = 0.33
 
     # plot cases per county per day
     log.info("# Creating figures")
-    plt.figure(figsize=(14, 9))
-    sns.lineplot(x='date', y='cases', hue='county', markers=True, dashes=False, data=knx_df)
+    plt.subplots(figsize=figsize)
+    sns.lineplot(x='date', y='cases', hue='county',
+                 markers=True, dashes=False, data=knx_df)
     plt.legend(bbox_to_anchor=(1, 1), loc=2)
     plt.xlabel('Date [YYYY-MM-DD]')
     plt.ylabel('Total Confirmed Cases')
-    plt.title('Knoxville Metro COVID19 Cumulative Cases by County -- Updated: {}'.format(time_now()))
+    plt.title(
+        'Knoxville Metro COVID19 Cumulative Cases by County -- Updated: {}'.format(time_now()))
+    plt.annotate(attribution, (0, 0), (0, -60),
+                 xycoords='axes fraction',
+                 textcoords='offset points',
+                 fontsize=attr_fontsize, color=attr_color, alpha=attr_alpha)
     plt.tight_layout()
     plt.savefig(os.path.join(imgdir, 'metro-cases-county.png'))
 
     # plot aggregate cases per day for KNX metro
-    plt.figure(figsize=(14, 9))
-    case_series.plot(kind='bar')
-    plt.xlabel('Date [YYYY-MM-DD]')
+    plt.figure(figsize=figsize)
+    ax = case_series.plot(kind='bar', rot=0)
+    plt.xlabel('Date')
+    ax.set_xticklabels(map(lambda xt: line_format(xt), case_series.index))
     plt.ylabel('Total Confirmed Cases')
-    plt.title('Knoxville Metro COVID19 Cumulative Cases -- Updated: {}'.format(time_now()))
+    plt.title(
+        'Knoxville Metro COVID19 Cumulative Cases -- Updated: {}'.format(time_now()))
+    plt.annotate(attribution, (0, 0), (0, -60),
+                 xycoords='axes fraction',
+                 textcoords='offset points',
+                 fontsize=attr_fontsize, color=attr_color, alpha=attr_alpha)
     plt.tight_layout()
     plt.savefig(os.path.join(imgdir, 'metro-cases-all.png'))
 
     # plot best scenario
-    fig, ax = plt.subplots(figsize=(14, 9))
+    plt.subplots(figsize=figsize)
     plt.scatter(x, y, label='Confirmed')
     plt.plot(x_fit, y_fit, 'r-', label='Projected')
     plt.xticks(np.arange(min(x_fit), max(x_fit) + 1, 7.0))
     plt.legend()
     plt.xlabel('Days from first reported case')
     plt.ylabel('Total Cases')
-    plt.title('Knoxville Metro COVID19 Projected Cumulative Cases -- Updated: {}'.format(time_now()))
+    plt.title(
+        'Knoxville Metro COVID19 Projected Cumulative Cases -- Updated: {}'.format(time_now()))
     ax.annotate('Max Cases: {:.0f}\nApprox. {:.1f}x current\nRollover Date: {}'.format(max(y_fit), ratio, end_date),
                 xytext=(0.75, 0.75), textcoords='figure fraction',
                 horizontalalignment='right', verticalalignment='top',
                 xy=(x_fit[no_new_cases], y_fit[no_new_cases]), xycoords='data',
                 arrowprops=dict(facecolor='black', shrink=0.05))
+    plt.annotate(attribution, (0, 0), (0, -60),
+                 xycoords='axes fraction',
+                 textcoords='offset points',
+                 fontsize=attr_fontsize, color=attr_color, alpha=attr_alpha)
     plt.tight_layout()
     plt.savefig(os.path.join(imgdir, 'metro-cases-all-fit-best.png'))
 
     # plot forecasted daily cases
-    plt.figure(figsize=(14, 9))
-    fig1 = daily_model.plot(daily_forecast)
-    a = add_changepoints_to_plot(fig1.gca(), daily_model, daily_forecast)
+    plt.figure(figsize=figsize)
+    fig = daily_model.plot(daily_forecast)
+    _ = add_changepoints_to_plot(fig.gca(), daily_model, daily_forecast)
     plt.xlabel('Date [YYYY-MM-DD]')
     plt.ylabel('Total Cases')
-    plt.title('Knoxville Metro COVID19 Forecasted Daily New Cases -- Updated: {}'.format(time_now()))
+    plt.title(
+        'Knoxville Metro COVID19 Forecasted Daily New Cases -- Updated: {}'.format(time_now()))
+    plt.annotate(attribution, (0, 0), (0, -60),
+                 xycoords='axes fraction',
+                 textcoords='offset points',
+                 fontsize=attr_fontsize, color=attr_color, alpha=attr_alpha)
     plt.tight_layout()
     plt.savefig(os.path.join(imgdir, 'metro-cases-all-daily-forecasted.png'))
 
     # plot worst scenario
-    plt.figure(figsize=(14, 9))
-    fig3 = worst_model.plot(worst_forecast)
-    a = add_changepoints_to_plot(fig1.gca(), worst_model, worst_forecast)
+    plt.figure(figsize=figsize)
+    fig = worst_model.plot(worst_forecast)
+    _ = add_changepoints_to_plot(fig.gca(), worst_model, worst_forecast)
     plt.xlabel('Date [YYYY-MM-DD]')
     plt.ylabel('ln(Total Cases)')
-    plt.title('Knoxville Metro COVID19 Forecasted Cumulative Cases -- Updated: {}'.format(time_now()))
+    plt.title(
+        'Knoxville Metro COVID19 Forecasted Cumulative Cases -- Updated: {}'.format(time_now()))
+    plt.annotate(attribution, (0, 0), (0, -60),
+                 xycoords='axes fraction',
+                 textcoords='offset points',
+                 fontsize=attr_fontsize, color=attr_color, alpha=attr_alpha)
     plt.tight_layout()
     plt.savefig(os.path.join(imgdir, 'metro-cases-all-fit-worst.png'))
 
@@ -299,7 +353,8 @@ def main():
     updated = "**Updated on {}**\n".format(time_now())
     with open(readme_file, 'r') as f:
         text = f.readlines()
-        new_text = "".join([line if current not in line else updated for line in text])
+        new_text = "".join(
+            [line if current not in line else updated for line in text])
     with open(readme_file, 'w') as f:
         f.write(new_text)
 

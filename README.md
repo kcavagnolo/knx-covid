@@ -2,7 +2,7 @@
 
 What's the story with COVID19 cases in Knoxville Metro?
 
-**Updated on 2020-03-31T21:34:38.114092+00:00**
+**Updated on 2020-04-01T15:52:56.651210+00:00**
 
 ## Defining Knoxville Metro
 
@@ -53,16 +53,21 @@ A deprecated interactive Jupyter notebook is also in the `analysis/` directory.
 
 ## Credits
 
-- [COVID raw data](https://github.com/CSSEGISandData/COVID-19)
-- [COVID aggregated data](https://github.com/pomber/covid19)
-- [COVID aggregated data API](https://covid19api.com/)
+- [Data from The New York Times, based on reports from state and local health agencies](https://github.com/nytimes/covid-19-data)
+- [Johns Hopkins University Center for Systems Science and Engineering (JHU CSSE) raw COVID data](https://github.com/CSSEGISandData/COVID-19)
 - [Tennessee county boundaries](https://tn-tnmap.opendata.arcgis.com/datasets/TWRA::tn-counties)
 - [Tennessee hospital locations](https://hub.arcgis.com/datasets/TDH::hospitals)
-- [Hospital Referral Regions (HRR)](https://hub.arcgis.com/datasets/fedmaps::hospital-referral-regions)
+- [CMS Hospital Referral Regions (HRR)](https://hub.arcgis.com/datasets/fedmaps::hospital-referral-regions)
 - [Mapbox maps](https://www.mapbox.com/about/maps/)
-- [OpenStreetMap road network data](http://www.openstreetmap.org/about/)
 - [Mapbox contributor plugins](https://docs.mapbox.com/mapbox-gl-js/plugins/)
+- [OpenStreetMap road network data](http://www.openstreetmap.org/about/)
 - [Facebook Prophet forecasting](https://github.com/facebook/prophet)
+- [Seaborn data visualization](https://github.com/mwaskom/seaborn)
+
+## References
+
+- [COVID aggregated data](https://github.com/pomber/covid19)
+- [COVID aggregated data API](https://covid19api.com/)
 
 ## Contributing
 
