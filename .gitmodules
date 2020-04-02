@@ -4,3 +4,6 @@
 [submodule "data/ny-times"]
 	path = data/ny-times
 	url = https://github.com/nytimes/covid-19-data.git
+[submodule "data/midas"]
+	path = data/midas
+	url = https://github.com/midas-network/COVID-19

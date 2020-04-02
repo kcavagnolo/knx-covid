@@ -187,8 +187,8 @@ def main():
     knx_capacity = args.population
 
     # file definitions
-    fips_datafile = os.path.join(datadir, 'csv/fips.csv')
-    metro_datafile = os.path.join(datadir, 'json/metro.json')
+    fips_datafile = os.path.join(datadir, 'tn/fips.csv')
+    metro_datafile = os.path.join(datadir, 'tn/metro.json')
     ny_times_datafile = os.path.join(datadir, 'ny-times/us-counties.csv')
     readme_file = os.path.join(os.path.dirname(__file__), '../README.md')
 
