@@ -9,6 +9,7 @@ import os
 import sys
 import time
 
+import geopandas as gpd
 import matplotlib.font_manager
 import matplotlib.pyplot as plt
 import numpy as np
@@ -19,7 +20,7 @@ from fbprophet import Prophet
 from fbprophet.plot import add_changepoints_to_plot
 from sklearn.preprocessing import MinMaxScaler
 
-# import traceback
+pd.options.mode.chained_assignment = None
 
 # setup file logger
 start_time = time.time()
@@ -106,11 +107,149 @@ def parse_arguments():
     return args
 
 
+def process_tn_data(fips_datafile, metro_datafile, hospitals_datafile, nytimes_datafile, drive_time='60'):
+    # process fips
+    log.info("# Processing FIPS")
+    fips_df = pd.read_csv(fips_datafile, encoding="ISO-8859-1")
+    fips_df['county_name'] = fips_df['county_name'].str.lower()
+    fips_df['state_abbr'] = fips_df['state_abbr'].str.lower()
+    fips_df['county_name'] = fips_df['county_name'].str.replace(' county', '')
+
+    # open metro ref file
+    with open(metro_datafile) as f:
+        metro_data = json.load(f)
+    metro_counties = [c for c in metro_data[drive_time]]
+
+    # assign metro to fips
+    knx_metro_fips = []
+    for county in metro_counties:
+        knx_metro_fips.append(
+            fips_df[(fips_df['county_name'] == county)
+                    & (fips_df['state_abbr'] == 'tn')]['fips'].values[0])
+
+    # read tn hospital data
+    hospitals_df = gpd.read_file(hospitals_datafile)
+    knx_hospitals_df = hospitals_df[hospitals_df['County'].str.lower().isin(metro_counties)]
+    knx_hospitals_df.loc[knx_hospitals_df['icu_beds'] < 0, 'icu_beds'] = 0
+
+    # read NY Times covid data set
+    log.info("# Processing NY Times data")
+    nytimes_df = pd.read_csv(nytimes_datafile)
+
+    # remove NA's
+    nytimes_df.fillna(0, inplace=True)
+
+    # convert to py datetime
+    nytimes_df['date'] = pd.to_datetime(nytimes_df['date'], errors='coerce')
+
+    # conert fips from string to int
+    nytimes_df['fips'] = nytimes_df['fips'].astype('int')
+
+    # filter for data in KNX metro fips
+    knx_df = nytimes_df[nytimes_df['fips'].isin(knx_metro_fips)]
+    return knx_df
+
+
+def process_midas_data(midas_datafile):
+    # load midas param estimates
+    midas_params = pd.read_csv(midas_datafile)
+
+    # remove whitespace and lowercase everything
+    midas_params = midas_params.stack().str.replace(' ', '_').unstack()
+    midas_params = midas_params.stack().str.lower().unstack()
+
+    # progression model params
+    params = {}
+
+    # select for peer reviewed values
+    midas_params_pr = midas_params.dropna(subset=['peer_review'])
+    midas_params_pr = midas_params_pr[midas_params_pr['peer_review'] == 'positive']
+
+    # R_0 -- https://en.wikipedia.org/wiki/Basic_reproduction_number
+    p = 'basic_reproduction_number'
+    params['r0'] = float(midas_params_pr[midas_params_pr['name'] == p]['value'].max())
+
+    # incubation period -- https://en.wikipedia.org/wiki/Incubation_period
+    p = 'incubation_period'
+    params['ip'] = float(midas_params_pr[midas_params_pr['name'] == p]['value'].max())
+
+    # transmission rate -- https://en.wikipedia.org/wiki/Transmission_risks_and_rates
+    p = 'transmission_rate'
+    params['tr'] = float(midas_params_pr[midas_params_pr['name'] == p]['value'].min())
+
+    # select for not peer reviewed values
+    midas_params_npr = midas_params[midas_params['peer_review'] != 'positive']
+
+    # time from symptoms to Hospitalization (tr)
+    p = 'time_from_symptom_onset_to_hospitalization'
+    params['soh'] = midas_params_npr[midas_params_npr['name'] == p]['value'].astype('float').mean()
+
+    # those that go to icu (icu)
+    p = "proportion_of_hospitalized_cases_admitted_to_icu"
+    params['icu'] = midas_params_npr[midas_params_npr['name'] == p]['value'].astype('float').mean()
+
+    # case hospitalization rate (chr)
+    # percent confirmed cases requiring hospitalization: 15% (China)
+    # https://www.cdc.gov/coronavirus/2019-ncov/hcp/clinical-guidance-management-patients.html
+    params['chr'] = 0.15
+
+    return params
+
+
 def logifunc(x, a, x0, k):
     return a / (1. + np.exp(-k * (x - x0)))
 
 
-def daily_fb_forecast(df, d):
+def logistic_forecast(knx_df, ndays=0, growth_rate=0, time_horizon=0):
+    # select data to fit
+    log.info("# Fitting logistic function")
+    case_series = knx_df.groupby(knx_df.date.dt.date)['cases'].sum()
+
+    # save param outputs
+    params = {}
+
+    # transform x from date to int
+    x = [n for n, _ in enumerate(case_series.index)]
+
+    # transform from np array to arr
+    y = case_series.values
+
+    # project an extra n days of linear growth
+    for _ in range(0, ndays):
+        x = np.append(x, x[-1] + 1)
+        y = np.append(y, y[-1] * growth_rate)
+
+    # scale case number for fitting
+    scaler = MinMaxScaler()
+    y_scaled = scaler.fit_transform(y.reshape(-1, 1))
+    y_scaled = y_scaled.reshape(1, -1)[0]
+
+    # use scipy opt to fit logistic
+    popt, pcov = opt.curve_fit(logifunc, x, y_scaled, maxfev=100000)
+    params["days_out"] = int(x[-1] + time_horizon)
+    x_fit = np.linspace(0, params["days_out"], num=params["days_out"])
+    y_fit = logifunc(x_fit, *popt)
+
+    # reverse the scaling
+    y_fit = y_fit.reshape(-1, 1)
+    y_fit = scaler.inverse_transform(y_fit).reshape(1, -1)[0]
+    params["ratio"] = max(y_fit) / max(y)
+
+    # when do new cases fall below ~1 (i.e., < 0.5)?
+    no_new_cases = 0
+    case_diff = np.diff(y_fit)
+    for i, ndiff in enumerate(case_diff):
+        if ndiff < 0.5 and i > x[-1]:
+            no_new_cases = i
+            break
+    params["rollover_date"] = case_series.index[-1] + dt.timedelta(days=no_new_cases)
+    params["rollover_date_coords"] = (x_fit[no_new_cases], y_fit[no_new_cases])
+
+    return x_fit, y_fit, params
+
+
+def daily_cases_fb_forecast(df, d, imgdir, attribution, figsize=(14, 9)):
+    # fit model
     cases = df.groupby(df.date.dt.date)['cases'].sum().diff()
     df = cases.to_frame().reset_index().fillna(0)
     df.columns = ['ds', 'y']
@@ -118,10 +257,26 @@ def daily_fb_forecast(df, d):
     m.fit(df)
     future = m.make_future_dataframe(periods=d)
     pred = m.predict(future)
-    return m, pred
+
+    # plot result
+    plt.figure(figsize=figsize)
+    fig = m.plot(pred)
+    _ = add_changepoints_to_plot(fig.gca(), m, pred)
+    plt.xlabel('Date [YYYY-MM-DD]')
+    plt.ylabel('Total Cases')
+    plt.title('Knoxville Metro COVID19 Forecasted Daily New Cases -- Updated: {}'.format(time_now()))
+    plt.annotate(attribution['text'], (0, 0), (0, -60),
+                 xycoords='axes fraction',
+                 textcoords='offset points',
+                 fontsize=attribution['fsize'],
+                 color=attribution['color'],
+                 alpha=attribution['alpha']
+                 )
+    plt.tight_layout()
+    plt.savefig(os.path.join(imgdir, 'metro-cases-all-daily-forecasted.png'))
 
 
-def worst_fb_forecast(df, c, d):
+def worst_case_fb_forecast(df, c, d, imgdir, attribution, figsize=(14, 9)):
     cases = df.groupby(df.date.dt.date)['cases'].sum()
     df = cases.to_frame().reset_index().fillna(0)
     df.columns = ['ds', 'y']
@@ -136,6 +291,24 @@ def worst_fb_forecast(df, c, d):
     future['cap'] = capacity
     future['floor'] = 0.0
     pred = m.predict(future)
+
+    # plot results
+    plt.figure(figsize=figsize)
+    fig = m.plot(pred)
+    _ = add_changepoints_to_plot(fig.gca(), m, pred)
+    plt.xlabel('Date [YYYY-MM-DD]')
+    plt.ylabel('ln(Total Cases)')
+    plt.title('Knoxville Metro COVID19 Forecasted Cumulative Cases -- Updated: {}'.format(time_now()))
+    plt.annotate(attribution['text'], (0, 0), (0, -60),
+                 xycoords='axes fraction',
+                 textcoords='offset points',
+                 fontsize=attribution['fsize'],
+                 color=attribution['color'],
+                 alpha=attribution['alpha']
+                 )
+    plt.tight_layout()
+    plt.savefig(os.path.join(imgdir, 'metro-cases-all-fit-worst.png'))
+
     return m, pred
 
 
@@ -164,6 +337,84 @@ def line_format(date):
     return label
 
 
+def plot_county_cases_per_day(df, imgdir, attribution, figsize=(14, 9)):
+    log.info("# Creating figures")
+    plt.subplots(figsize=figsize)
+    fig = sns.lineplot(x='date', y='cases',
+                       hue='county',
+                       markers=True,
+                       dashes=False,
+                       data=df)
+    handles, labels = reorder_legend(df, fig)
+    plt.legend(handles, labels, bbox_to_anchor=(1, 1), loc=2)
+    plt.xlabel('Date [YYYY-MM-DD]')
+    plt.ylabel('Total Confirmed Cases')
+    plt.title('Knoxville Metro COVID19 Cumulative Cases by County -- Updated: {}'.format(time_now()))
+    plt.annotate(attribution['text'], (0, 0), (0, -60),
+                 xycoords='axes fraction',
+                 textcoords='offset points',
+                 fontsize=attribution['fsize'],
+                 color=attribution['color'],
+                 alpha=attribution['alpha']
+                 )
+    plt.tight_layout()
+    plt.savefig(os.path.join(imgdir, 'metro-cases-county.png'))
+
+
+def plot_metro_cases_per_day(df, imgdir, attribution, figsize=(14, 9)):
+    data = df.groupby(df.date.dt.date)['cases'].sum()
+    plt.figure(figsize=figsize)
+    ax = data.plot(kind='bar', rot=0)
+    plt.xlabel('Date')
+    ax.set_xticklabels(map(lambda xt: line_format(xt), data.index))
+    plt.ylabel('Total Confirmed Cases')
+    plt.title('Knoxville Metro COVID19 Cumulative Cases -- Updated: {}'.format(time_now()))
+    plt.annotate(attribution['text'], (0, 0), (0, -60),
+                 xycoords='axes fraction',
+                 textcoords='offset points',
+                 fontsize=attribution['fsize'],
+                 color=attribution['color'],
+                 alpha=attribution['alpha']
+                 )
+    plt.tight_layout()
+    plt.savefig(os.path.join(imgdir, 'metro-cases-all.png'))
+
+
+def plot_logistic_model(df, log_model_x, log_model_y, log_model_params, imgdir, attribution, figsize=(14, 9)):
+    data = df.groupby(df.date.dt.date)['cases'].sum()
+    basedate = data.index[0]
+    x = data.index
+    y = data.values
+    log_model_x = np.array([basedate + dt.timedelta(days=i) for i in range(len(log_model_x))])
+    plt.subplots(figsize=figsize)
+    plt.scatter(x, y, label='Confirmed')
+    plt.plot(log_model_x, log_model_y, 'r-', label='Projected')
+    plt.xticks(np.arange(min(log_model_x), max(log_model_x), step=7))
+    plt.xlabel('Date [YYYY-MM-DD]')
+    plt.ylabel('Total Cases')
+    plt.title('Knoxville Metro COVID19 Projected Cumulative Cases -- Updated: {}'.format(time_now()))
+    plt.legend()
+    plt.annotate(
+        'Max Cases: {:.0f}\n'
+        'Approx. {:.1f}x current\n'
+        'Rollover Date: {}'.format(max(log_model_y),
+                                   log_model_params['ratio'],
+                                   log_model_params['rollover_date']),
+        xytext=(0.75, 0.75), textcoords='figure fraction',
+        horizontalalignment='right', verticalalignment='top',
+        xy=log_model_params['rollover_date_coords'], xycoords='data',
+        arrowprops=dict(facecolor='black', shrink=0.05))
+    plt.annotate(attribution['text'], (0, 0), (0, -60),
+                 xycoords='axes fraction',
+                 textcoords='offset points',
+                 fontsize=attribution['fsize'],
+                 color=attribution['color'],
+                 alpha=attribution['alpha']
+                 )
+    plt.tight_layout()
+    plt.savefig(os.path.join(imgdir, 'metro-cases-all-fit-best.png'))
+
+
 def main():
     """
     The main program that updates projections
@@ -189,178 +440,42 @@ def main():
     # file definitions
     fips_datafile = os.path.join(datadir, 'tn/fips.csv')
     metro_datafile = os.path.join(datadir, 'tn/metro.json')
-    ny_times_datafile = os.path.join(datadir, 'ny-times/us-counties.csv')
+    hospitals_datafile = os.path.join(datadir, 'tn/tn-hospitals.geojson')
+    nytimes_datafile = os.path.join(datadir, 'ny-times/us-counties.csv')
+    # midas_datafile = os.path.join(datadir, 'midas/parameter_estimates/2019_novel_coronavirus/estimates.csv')
     readme_file = os.path.join(os.path.dirname(__file__), '../README.md')
 
-    # read fips county data
-    log.info("# Processing FIPS")
-    fips_df = pd.read_csv(fips_datafile, encoding="ISO-8859-1")
+    # figure data attribution
+    attribution = {
+        'text': 'Data from The New York Times, based on reports from state and local health agencies.',
+        'fsize': 10,
+        'color': '#000000',
+        'alpha': 0.33
+    }
 
-    # cleanup dataframe
-    fips_df['county_name'] = fips_df['county_name'].str.lower()
-    fips_df['state_abbr'] = fips_df['state_abbr'].str.lower()
-    fips_df['county_name'] = fips_df['county_name'].str.replace(' county', '')
-
-    # use the 60min catchment area
-    with open(metro_datafile) as f:
-        metro_data = json.load(f)
-
-    # assign metro to fips
-    knx_metro_fips = []
-    for county in metro_data[drive_time]:
-        knx_metro_fips.append(
-            fips_df[(fips_df['county_name'] == county)
-                    & (fips_df['state_abbr'] == 'tn')]['fips'].values[0])
-
-    # read NY Times covid data set
-    log.info("# Processing NY Times data")
-    ny_times_df = pd.read_csv(ny_times_datafile)
-
-    # remove NA's
-    ny_times_df.fillna(0, inplace=True)
-
-    # convert to py datetime
-    ny_times_df['date'] = pd.to_datetime(ny_times_df['date'], errors='coerce')
-
-    # conert fips from string to int
-    ny_times_df['fips'] = ny_times_df['fips'].astype('int')
-
-    # filter for data in KNX metro fips
-    knx_df = ny_times_df[ny_times_df['fips'].isin(knx_metro_fips)]
-    case_series = knx_df.groupby(knx_df.date.dt.date)['cases'].sum()
-
-    # select dates and cases as arrays
-    log.info("# Fitting logistic function")
-    x = [n for n, _ in enumerate(case_series.index)]
-    y = case_series.values
-
-    # project an extra n days of linear growth
-    for _ in range(0, ndays):
-        x = np.append(x, x[-1] + 1)
-        y = np.append(y, y[-1] * growth_rate)
-
-    # scale case number for fitting
-    scaler = MinMaxScaler()
-    y_scaled = scaler.fit_transform(y.reshape(-1, 1))
-    y_scaled = y_scaled.reshape(1, -1)[0]
-
-    # use scipy opt to fit logistic
-    popt, pcov = opt.curve_fit(logifunc, x, y_scaled, maxfev=100000)
-    days_out = int(x[-1] + time_horizon)
-    x_fit = np.linspace(0, days_out, num=days_out)
-    y_fit = logifunc(x_fit, *popt)
-
-    # reverse the scaling
-    y_fit = y_fit.reshape(-1, 1)
-    y_fit = scaler.inverse_transform(y_fit).reshape(1, -1)[0]
-    ratio = max(y_fit) / max(y)
-
-    # when do new cases fall below ~1 (i.e., < 0.5)?
-    no_new_cases = 0
-    case_diff = np.diff(y_fit)
-    for i, ndiff in enumerate(case_diff):
-        if ndiff < 0.5 and i > x[-1]:
-            no_new_cases = i
-            break
-    end_date = case_series.index[-1] + dt.timedelta(days=no_new_cases)
-
-    # forecast daily cases
-    daily_model, daily_forecast = daily_fb_forecast(knx_df, days_out)
-
-    # forecast unabated cases with logistic growth
-    worst_model, worst_forecast = worst_fb_forecast(knx_df, knx_capacity, days_out)
-
-    # figure setup
-    figsize = (14, 9)
-    attribution = 'Data from The New York Times, based on reports from state and local health agencies.'
-    attr_fontsize = 10
-    attr_color = '#000000'
-    attr_alpha = 0.33
+    # process local TN data
+    knx_df = process_tn_data(fips_datafile, metro_datafile, hospitals_datafile, nytimes_datafile, drive_time=drive_time)
 
     # plot cases per county per day
-    log.info("# Creating figures")
-    plt.subplots(figsize=figsize)
-    fig = sns.lineplot(x='date', y='cases', hue='county',
-                     markers=True, dashes=False, data=knx_df)
-    handles, labels = reorder_legend(knx_df, fig)
-    plt.legend(handles, labels, bbox_to_anchor=(1, 1), loc=2)
-    plt.xlabel('Date [YYYY-MM-DD]')
-    plt.ylabel('Total Confirmed Cases')
-    plt.title(
-        'Knoxville Metro COVID19 Cumulative Cases by County -- Updated: {}'.format(time_now()))
-    plt.annotate(attribution, (0, 0), (0, -60),
-                 xycoords='axes fraction',
-                 textcoords='offset points',
-                 fontsize=attr_fontsize, color=attr_color, alpha=attr_alpha)
-    plt.tight_layout()
-    plt.savefig(os.path.join(imgdir, 'metro-cases-county.png'))
+    plot_county_cases_per_day(knx_df, imgdir, attribution)
 
     # plot aggregate cases per day for KNX metro
-    plt.figure(figsize=figsize)
-    ax = case_series.plot(kind='bar', rot=0)
-    plt.xlabel('Date')
-    ax.set_xticklabels(map(lambda xt: line_format(xt), case_series.index))
-    plt.ylabel('Total Confirmed Cases')
-    plt.title(
-        'Knoxville Metro COVID19 Cumulative Cases -- Updated: {}'.format(time_now()))
-    plt.annotate(attribution, (0, 0), (0, -60),
-                 xycoords='axes fraction',
-                 textcoords='offset points',
-                 fontsize=attr_fontsize, color=attr_color, alpha=attr_alpha)
-    plt.tight_layout()
-    plt.savefig(os.path.join(imgdir, 'metro-cases-all.png'))
+    plot_metro_cases_per_day(knx_df, imgdir, attribution)
 
-    # plot best scenario
-    plt.subplots(figsize=figsize)
-    plt.scatter(x, y, label='Confirmed')
-    plt.plot(x_fit, y_fit, 'r-', label='Projected')
-    plt.xticks(np.arange(min(x_fit), max(x_fit) + 1, 7.0))
-    plt.legend()
-    plt.xlabel('Days from first reported case')
-    plt.ylabel('Total Cases')
-    plt.title(
-        'Knoxville Metro COVID19 Projected Cumulative Cases -- Updated: {}'.format(time_now()))
-    plt.annotate('Max Cases: {:.0f}\nApprox. {:.1f}x current\nRollover Date: {}'.format(max(y_fit), ratio, end_date),
-                xytext=(0.75, 0.75), textcoords='figure fraction',
-                horizontalalignment='right', verticalalignment='top',
-                xy=(x_fit[no_new_cases], y_fit[no_new_cases]), xycoords='data',
-                arrowprops=dict(facecolor='black', shrink=0.05))
-    plt.annotate(attribution, (0, 0), (0, -60),
-                 xycoords='axes fraction',
-                 textcoords='offset points',
-                 fontsize=attr_fontsize, color=attr_color, alpha=attr_alpha)
-    plt.tight_layout()
-    plt.savefig(os.path.join(imgdir, 'metro-cases-all-fit-best.png'))
+    # best case logistic fit
+    log_model_x, log_model_y, log_model_params = logistic_forecast(knx_df, ndays, growth_rate, time_horizon)
 
-    # plot forecasted daily cases
-    plt.figure(figsize=figsize)
-    fig = daily_model.plot(daily_forecast)
-    _ = add_changepoints_to_plot(fig.gca(), daily_model, daily_forecast)
-    plt.xlabel('Date [YYYY-MM-DD]')
-    plt.ylabel('Total Cases')
-    plt.title(
-        'Knoxville Metro COVID19 Forecasted Daily New Cases -- Updated: {}'.format(time_now()))
-    plt.annotate(attribution, (0, 0), (0, -60),
-                 xycoords='axes fraction',
-                 textcoords='offset points',
-                 fontsize=attr_fontsize, color=attr_color, alpha=attr_alpha)
-    plt.tight_layout()
-    plt.savefig(os.path.join(imgdir, 'metro-cases-all-daily-forecasted.png'))
+    # plot logistic model best case scenario
+    plot_logistic_model(knx_df, log_model_x, log_model_y, log_model_params, imgdir, attribution)
 
-    # plot worst scenario
-    plt.figure(figsize=figsize)
-    fig = worst_model.plot(worst_forecast)
-    _ = add_changepoints_to_plot(fig.gca(), worst_model, worst_forecast)
-    plt.xlabel('Date [YYYY-MM-DD]')
-    plt.ylabel('ln(Total Cases)')
-    plt.title(
-        'Knoxville Metro COVID19 Forecasted Cumulative Cases -- Updated: {}'.format(time_now()))
-    plt.annotate(attribution, (0, 0), (0, -60),
-                 xycoords='axes fraction',
-                 textcoords='offset points',
-                 fontsize=attr_fontsize, color=attr_color, alpha=attr_alpha)
-    plt.tight_layout()
-    plt.savefig(os.path.join(imgdir, 'metro-cases-all-fit-worst.png'))
+    # prophet forecast of daily cases
+    daily_cases_fb_forecast(knx_df, log_model_params['days_out'], imgdir, attribution)
+
+    # process midas data
+    # midas_params = process_midas_data(midas_datafile)
+
+    # worst case prophet model
+    worst_case_fb_forecast(knx_df, knx_capacity, log_model_params['days_out'], imgdir, attribution)
 
     # update the readme
     log.info("# Updating README")

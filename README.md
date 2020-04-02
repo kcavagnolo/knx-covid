@@ -2,7 +2,7 @@
 
 What's the story with COVID19 cases in Knoxville Metro?
 
-**Updated on 2020-04-02T14:33:01.818690+00:00**
+**Updated on 2020-04-02T21:26:10.562198+00:00**
 
 ## Defining Knoxville Metro
 
@@ -21,6 +21,8 @@ Best case scenario: new case growth is [regulated](https://www.khanacademy.org/s
 Worst case scenario: new case growth is [unregulated](https://facebook.github.io/prophet/docs/saturating_forecasts.html#forecasting-growth).
 
 ![Knoxville Metro COVID19 Projected Cumulative Cases](/imgs/metro-cases-all-fit-worst.png)
+
+Based on data provided by [Models of Infectious Disease Agent Study (MIDAS)](https://midasnetwork.us/covid-19/), the rate of COVID cases requiring hospitalization is 10%-20%. The rate of hospitalized cases requiring admittance to an ICU is 5%. The Knoxville Metro area has an [ICU capacity of 295 beds](https://www.wbir.com/article/news/health/coronavirus/knox-co-has-173-icu-beds-all-others-in-our-area-combined-have-131-its-indicative-of-a-broader-problem/51-7727cc22-384c-4e67-8008-ec770b949b25). Assuming the MIDAS rates, and all beds being available, the critical case load which results in all ICU capacity being consumed is 29,500 cases. In the worst case scenario model, this occurs around April 15th.
 
 ---
 
@@ -55,6 +57,7 @@ A deprecated interactive Jupyter notebook is also in the `analysis/` directory.
 
 - [Data from The New York Times, based on reports from state and local health agencies](https://github.com/nytimes/covid-19-data)
 - [Johns Hopkins University Center for Systems Science and Engineering (JHU CSSE) raw COVID data](https://github.com/CSSEGISandData/COVID-19)
+- [MIDAS 2019 Novel Coronavirus GitHub Repository](https://github.com/midas-network/COVID-19)
 - [Tennessee county boundaries](https://tn-tnmap.opendata.arcgis.com/datasets/TWRA::tn-counties)
 - [Tennessee hospital locations](https://hub.arcgis.com/datasets/TDH::hospitals)
 - [CMS Hospital Referral Regions (HRR)](https://hub.arcgis.com/datasets/fedmaps::hospital-referral-regions)
