@@ -81,7 +81,7 @@ if (!mapboxgl.supported()) {
 
     // function to add county boundaries
     function addCounties() {
-        var url = 'https://raw.githubusercontent.com/kcavagnolo/knx-covid/master/data/geojson/tn-counties.geojson';
+        var url = 'https://raw.githubusercontent.com/kcavagnolo/knx-covid/master/data/tn/tn-counties.geojson';
         fetch(url)
             .then(function (response) {
                 if (!response.ok) {
@@ -137,7 +137,7 @@ if (!mapboxgl.supported()) {
 
     // function to add county boundaries
     function addHrr() {
-        var url = 'https://raw.githubusercontent.com/kcavagnolo/knx-covid/master/data/geojson/hrr.geojson';
+        var url = 'https://raw.githubusercontent.com/kcavagnolo/knx-covid/master/data/tn/hrr.geojson';
         fetch(url)
             .then(function (response) {
                 if (!response.ok) {
@@ -171,7 +171,7 @@ if (!mapboxgl.supported()) {
 
     // function to add county boundaries
     function addHospitals() {
-        var url = 'https://raw.githubusercontent.com/kcavagnolo/knx-covid/master/data/geojson/tn-hospitals.geojson';
+        var url = 'https://raw.githubusercontent.com/kcavagnolo/knx-covid/master/data/tn/tn-hospitals.geojson';
         fetch(url)
             .then(function (response) {
                 if (!response.ok) {
@@ -229,6 +229,8 @@ if (!mapboxgl.supported()) {
                     var description = '<h3>' + e.features[0].properties.HospitalName + '</h3><p>' +
                         properties.Address1 + '<br>' +
                         properties.City + ',' + properties.State + ' ' + properties.PostalCode +
+                        '<br>' +
+                        'ICU beds ' + properties.icu_beds +
                         '<br>' +
                         'Ebola TTX? ' + properties.ebola_ttx +
                         '</p>'
