@@ -53,6 +53,22 @@ python3 analysis/update.py -d data/ -i imgs/ -v
 
 A deprecated interactive Jupyter notebook is also in the `analysis/` directory.
 
+### Code Quality
+
+1. Install and configure [Sonarqube](https://docs.sonarqube.org/latest/) or launch a maintained container:
+
+   ```bash
+   docker run -it --name sonarqube -p 9000:9000 sonarqube
+   ```
+
+2. Setup a `sonar-project.properties` file with configurations for scans.
+
+3. Run a scan:
+
+   ```bash
+   sonar-scanner
+   ```
+
 ## Credits
 
 - [Data from The New York Times, based on reports from state and local health agencies](https://github.com/nytimes/covid-19-data)

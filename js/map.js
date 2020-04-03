@@ -56,7 +56,7 @@ if (!mapboxgl.supported()) {
         }).done(function (data) {
             map.getSource('iso').setData(data);
         })
-    };
+    }
 
     // function to add iso layer
     function addIso() {
