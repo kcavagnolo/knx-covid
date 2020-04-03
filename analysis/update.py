@@ -40,7 +40,6 @@ logging.getLogger('').addHandler(console)
 log = logging.getLogger()
 
 # matplotlib plotting style
-log.info("# Loading fonts")
 matplotlib.font_manager.findSystemFonts(fontpaths=None, fontext='ttf')
 plt.rcParams['font.family'] = 'sans-serif'
 plt.rcParams['font.sans-serif'] = 'Open Sans'
@@ -338,7 +337,6 @@ def line_format(date):
 
 
 def plot_county_cases_per_day(df, imgdir, attribution, figsize=(14, 9)):
-    log.info("# Creating figures")
     plt.subplots(figsize=figsize)
     fig = sns.lineplot(x='date', y='cases',
                        hue='county',
@@ -386,11 +384,13 @@ def plot_logistic_model(df, log_model_x, log_model_y, log_model_params, imgdir, 
     x = data.index
     y = data.values
     log_model_x = np.array([basedate + dt.timedelta(days=i) for i in range(len(log_model_x))])
-    plt.subplots(figsize=figsize)
+    fig, ax = plt.subplots(figsize=figsize)
     plt.scatter(x, y, label='Confirmed')
     plt.plot(log_model_x, log_model_y, 'r-', label='Projected')
-    plt.xticks(np.arange(min(log_model_x), max(log_model_x), step=7))
-    plt.xlabel('Date [YYYY-MM-DD]')
+    ticks = np.arange(min(log_model_x), max(log_model_x), step=7)
+    plt.xticks(ticks)
+    ax.set_xticklabels(map(lambda xt: line_format(xt.astype(dt.datetime)), ticks))
+    plt.xlabel('Date')
     plt.ylabel('Total Cases')
     plt.title('Knoxville Metro COVID19 Projected Cumulative Cases -- Updated: {}'.format(time_now()))
     plt.legend()
@@ -402,7 +402,7 @@ def plot_logistic_model(df, log_model_x, log_model_y, log_model_params, imgdir, 
                                    log_model_params['rollover_date']),
         xytext=(0.75, 0.75), textcoords='figure fraction',
         horizontalalignment='right', verticalalignment='top',
-        xy=log_model_params['rollover_date_coords'], xycoords='data',
+        xy=(log_model_params['rollover_date'], log_model_params['rollover_date_coords'][1]), xycoords='data',
         arrowprops=dict(facecolor='black', shrink=0.05))
     plt.annotate(attribution['text'], (0, 0), (0, -60),
                  xycoords='axes fraction',
