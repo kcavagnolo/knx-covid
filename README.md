@@ -2,7 +2,7 @@
 
 What's the story with COVID19 cases in Knoxville Metro?
 
-**Updated on 2020-04-03T21:02:50.011819+00:00**
+**Updated on 2020-04-04T15:17:14.598645+00:00**
 
 ## Defining Knoxville Metro
 
@@ -23,6 +23,8 @@ Worst case scenario: new case growth is [unregulated](https://facebook.github.io
 ![Knoxville Metro COVID19 Projected Cumulative Cases](/imgs/metro-cases-all-fit-worst.png)
 
 Based on data provided by [Models of Infectious Disease Agent Study (MIDAS)](https://midasnetwork.us/covid-19/), the rate of COVID cases requiring hospitalization is 10%-20%. The rate of hospitalized cases requiring admittance to an ICU is 5%. The Knoxville Metro area has an [ICU capacity of 295 beds](https://www.wbir.com/article/news/health/coronavirus/knox-co-has-173-icu-beds-all-others-in-our-area-combined-have-131-its-indicative-of-a-broader-problem/51-7727cc22-384c-4e67-8008-ec770b949b25). Assuming the MIDAS rates, and all beds being available, the critical case load which results in all ICU capacity being consumed is 29,500 cases. In the worst case scenario model, this occurs around April 15th.
+
+![Knoxville Metro COVID19 Projected Cumulative Cases](/imgs/wc.gif)
 
 ---
 
@@ -52,6 +54,14 @@ python3 analysis/update.py -d data/ -i imgs/ -v
 ```
 
 A deprecated interactive Jupyter notebook is also in the `analysis/` directory.
+
+To create the animation:
+
+```bash
+ffmpeg -framerate 2 -i imgs/wc_%04d.png -r 60 -vcodec copy -acodec copy -vcodec libx264 -pix_fmt yuv420p -y imgs/wc.mp4
+ffmpeg -i imgs/wc.mp4 -filter_complex "fps=2,scale=-1:640,setsar=1,palettegen" -y imgs/palette.png
+ffmpeg -i imgs/wc.mp4 -i imgs/palette.png -filter_complex "[0]fps=2,scale=-1:640,setsar=1[x];[x][1:v]paletteuse" -y imgs/wc.gif
+```
 
 ### Code Quality
 

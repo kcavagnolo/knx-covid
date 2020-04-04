@@ -3,6 +3,7 @@
 
 import argparse
 import datetime as dt
+import glob
 import json
 import logging
 import os
@@ -19,6 +20,7 @@ import seaborn as sns
 from fbprophet import Prophet
 from fbprophet.plot import add_changepoints_to_plot
 from sklearn.preprocessing import MinMaxScaler
+from tqdm import tqdm
 
 pd.options.mode.chained_assignment = None
 
@@ -86,29 +88,47 @@ def parse_arguments():
     """
     parser = argparse.ArgumentParser(description="What's the story with COVID19 cases in Knoxville Metro?",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("-d", "--datadir", type=is_dir,
-                        help="Data directory", action=FullPaths, required=True)
-    parser.add_argument("-i", "--imgdir", type=is_dir,
-                        help="Images directory", action=FullPaths, required=True)
+    parser.add_argument("-d", "--datadir",
+                        required=True,
+                        type=is_dir,
+                        help="Data directory",
+                        action=FullPaths)
+    parser.add_argument("-i", "--imgdir",
+                        required=True,
+                        type=is_dir,
+                        help="Images directory",
+                        action=FullPaths)
     parser.add_argument("-v", "--verbose",
-                        help="increase verbosity", action="store_true")
-    parser.add_argument("-dt", "--drive-time", type=str, default="60",
+                        help="increase verbosity",
+                        action="store_true")
+    parser.add_argument("-dt", "--drive-time",
+                        type=str,
+                        default="60",
                         help="Drive time to use for metro definition")
-    parser.add_argument("-nd", "--num-days", type=int,
-                        default=0, help="Number of days to add linear growth")
-    parser.add_argument("-gr", "--growth-rate", type=float,
-                        default=1.15, help="Linear growth rate")
-    parser.add_argument("-th", "--time-horizon", type=int,
-                        default=30, help="Number of days to look forward")
-    parser.add_argument("-pc", "--population", type=float,
-                        default=1e6, help="KNX metro population")
+    parser.add_argument("-nd", "--num-days",
+                        type=int,
+                        default=0,
+                        help="Number of days to add linear growth")
+    parser.add_argument("-gr", "--growth-rate",
+                        type=float,
+                        default=1.15,
+                        help="Linear growth rate")
+    parser.add_argument("-th", "--time-horizon",
+                        type=int,
+                        default=30,
+                        help="Number of days to look forward")
+    parser.add_argument("-pc", "--population",
+                        type=float,
+                        default=1e6,
+                        help="KNX metro population")
     args = parser.parse_args()
     return args
 
 
-def process_tn_data(fips_datafile, metro_datafile, hospitals_datafile, nytimes_datafile, drive_time='60'):
+def process_tn_data(fips_datafile, metro_datafile, hospitals_datafile, nytimes_datafile, jhu_datafiles,
+                    drive_time='60'):
     # process fips
-    log.info("# Processing FIPS")
+    log.info("# Processing TN Data")
     fips_df = pd.read_csv(fips_datafile, encoding="ISO-8859-1")
     fips_df['county_name'] = fips_df['county_name'].str.lower()
     fips_df['state_abbr'] = fips_df['state_abbr'].str.lower()
@@ -132,20 +152,41 @@ def process_tn_data(fips_datafile, metro_datafile, hospitals_datafile, nytimes_d
     knx_hospitals_df.loc[knx_hospitals_df['icu_beds'] < 0, 'icu_beds'] = 0
 
     # read NY Times covid data set
-    log.info("# Processing NY Times data")
     nytimes_df = pd.read_csv(nytimes_datafile)
-
-    # remove NA's
     nytimes_df.fillna(0, inplace=True)
-
-    # convert to py datetime
+    nytimes_df.columns = [c.lower().replace(' ', '_') for c in nytimes_df.columns]
+    nytimes_df.rename(columns={'cases': 'ncases', 'deaths': 'ndeaths'}, inplace=True)
     nytimes_df['date'] = pd.to_datetime(nytimes_df['date'], errors='coerce')
-
-    # conert fips from string to int
+    nytimes_df['date'] = nytimes_df.date.dt.date
     nytimes_df['fips'] = nytimes_df['fips'].astype('int')
+    nytimes_df = df_clean_string(nytimes_df)
+    nytimes_df = nytimes_df.sort_values(by=['date', 'state', 'county'])
+    nknx_df = nytimes_df[nytimes_df['fips'].isin(knx_metro_fips)]
 
-    # filter for data in KNX metro fips
-    knx_df = nytimes_df[nytimes_df['fips'].isin(knx_metro_fips)]
+    # read JHU covid data set
+    jhu_df = (pd.read_csv(f) for f in jhu_datafiles)
+    jhu_df = pd.concat(jhu_df, ignore_index=True)
+    threshold = 0.75 * len(jhu_df)
+    jhu_df = jhu_df.dropna(thresh=threshold, axis=1)
+    threshold = 0.50 * len(jhu_df.columns)
+    jhu_df = jhu_df.dropna(thresh=threshold, axis=0)
+    jhu_df = jhu_df.reset_index().drop('index', axis=1)
+    jhu_df.fillna(0, inplace=True)
+    jhu_df.columns = [c.lower().replace(' ', '_') for c in jhu_df.columns]
+    jhu_df.rename(columns={'admin2': 'county', 'confirmed': 'jcases', 'deaths': 'jdeaths'}, inplace=True)
+    jhu_df['date'] = pd.to_datetime(jhu_df['last_update'], errors='coerce')
+    jhu_df['date'] = jhu_df.date.dt.date
+    jhu_df['fips'] = jhu_df['fips'].astype('int')
+    jhu_df = df_clean_string(jhu_df)
+    jhu_df = jhu_df.sort_values(by=['date', 'country_region', 'province_state', 'county'])
+    jknx_df = jhu_df[jhu_df['fips'].isin(knx_metro_fips)]
+
+    # combine the data and take max of either
+    knx_df = pd.merge(nknx_df, jknx_df, on=['date', 'county', 'fips'], how="outer")
+    knx_df.fillna(0, inplace=True)
+    knx_df["cases"] = knx_df[["jcases", "ncases"]].values.max(1)
+    knx_df["deaths"] = knx_df[["jdeaths", "ndeaths"]].values.max(1)
+
     return knx_df
 
 
@@ -202,7 +243,7 @@ def logifunc(x, a, x0, k):
 def logistic_forecast(knx_df, ndays=0, growth_rate=0, time_horizon=0):
     # select data to fit
     log.info("# Fitting logistic function")
-    case_series = knx_df.groupby(knx_df.date.dt.date)['cases'].sum()
+    case_series = knx_df.groupby(knx_df.date)['cases'].sum()
 
     # save param outputs
     params = {}
@@ -249,7 +290,7 @@ def logistic_forecast(knx_df, ndays=0, growth_rate=0, time_horizon=0):
 
 def daily_cases_fb_forecast(df, d, imgdir, attribution, figsize=(14, 9)):
     # fit model
-    cases = df.groupby(df.date.dt.date)['cases'].sum().diff()
+    cases = df.groupby(df.date)['cases'].sum().diff()
     df = cases.to_frame().reset_index().fillna(0)
     df.columns = ['ds', 'y']
     m = Prophet(interval_width=0.95)
@@ -276,7 +317,7 @@ def daily_cases_fb_forecast(df, d, imgdir, attribution, figsize=(14, 9)):
 
 
 def worst_case_fb_forecast(df, c, d, imgdir, attribution, figsize=(14, 9)):
-    cases = df.groupby(df.date.dt.date)['cases'].sum()
+    cases = df.groupby(df.date)['cases'].sum()
     df = cases.to_frame().reset_index().fillna(0)
     df.columns = ['ds', 'y']
     df['y'] = np.log(df['y'])
@@ -291,7 +332,7 @@ def worst_case_fb_forecast(df, c, d, imgdir, attribution, figsize=(14, 9)):
     future['floor'] = 0.0
     pred = m.predict(future)
 
-    # plot results
+    # plot current results
     plt.figure(figsize=figsize)
     fig = m.plot(pred)
     _ = add_changepoints_to_plot(fig.gca(), m, pred)
@@ -308,7 +349,45 @@ def worst_case_fb_forecast(df, c, d, imgdir, attribution, figsize=(14, 9)):
     plt.tight_layout()
     plt.savefig(os.path.join(imgdir, 'metro-cases-all-fit-worst.png'))
 
-    return m, pred
+    # create an animation
+    j = round(0.75 * len(cases))
+    xmin = df.ds.min()
+    for i in tqdm(range(0, j), desc='Creating animation of worst case scenario evolution'):
+        ani_df = df.iloc[i:]
+        m = Prophet(growth='logistic', interval_width=0.95)
+        m.fit(ani_df)
+        future = m.make_future_dataframe(periods=90)
+        future['cap'] = capacity
+        future['floor'] = 0.0
+        pred = m.predict(future)
+        plt.figure(figsize=figsize)
+        fig = m.plot(pred)
+        _ = add_changepoints_to_plot(fig.gca(), m, pred)
+        plt.xlabel('Date [YYYY-MM-DD]')
+        plt.ylabel('ln(Total Cases)')
+        plt.title('Knoxville Metro COVID19 Forecasted Cumulative Cases -- Updated: {}'.format(time_now()))
+        plt.annotate(attribution['text'], (0, 0), (0, -60),
+                     xycoords='axes fraction',
+                     textcoords='offset points',
+                     fontsize=attribution['fsize'],
+                     color=attribution['color'],
+                     alpha=attribution['alpha']
+                     )
+        plt.xlim(xmin, max(future.ds))
+        plt.ylim(-1, 15)
+        plt.tight_layout()
+        plt.savefig(os.path.join(imgdir, 'wc_{:04d}'.format(i)))
+        plt.close('all')
+
+    # !ffmpeg
+    # -framerate 2
+    # -i ../imgs/wc_%04d.png
+    # -r 60
+    # -vcodec copy
+    # -acodec copy
+    # -vcodec libx264
+    # -pix_fmt yuv420p
+    # ../imgs/wc.mp4 -y
 
 
 def reorder_legend(df, fig):
@@ -321,7 +400,7 @@ def reorder_legend(df, fig):
     labels = []
     handles = []
     for c in latest:
-        labels.append(c[0].capitalize() + ': {} case(s)'.format(c[1]))
+        labels.append(c[0].capitalize() + ': {:.0f} case(s)'.format(c[1]))
         handles.append(legend_entries[c[0]])
     return handles, labels
 
@@ -336,11 +415,19 @@ def line_format(date):
     return label
 
 
+def df_clean_string(df):
+    for col in df.select_dtypes(include=['object']).columns:
+        if isinstance(df[col][0], str):
+            df[col] = df[col].str.lower().replace(' ', '_')
+    return df
+
+
 def plot_county_cases_per_day(df, imgdir, attribution, figsize=(14, 9)):
     plt.subplots(figsize=figsize)
     fig = sns.lineplot(x='date', y='cases',
                        hue='county',
                        markers=True,
+                       marker='o',
                        dashes=False,
                        data=df)
     handles, labels = reorder_legend(df, fig)
@@ -360,7 +447,7 @@ def plot_county_cases_per_day(df, imgdir, attribution, figsize=(14, 9)):
 
 
 def plot_metro_cases_per_day(df, imgdir, attribution, figsize=(14, 9)):
-    data = df.groupby(df.date.dt.date)['cases'].sum()
+    data = df.groupby(df.date)['cases'].sum()
     plt.figure(figsize=figsize)
     ax = data.plot(kind='bar', rot=0)
     plt.xlabel('Date')
@@ -379,7 +466,7 @@ def plot_metro_cases_per_day(df, imgdir, attribution, figsize=(14, 9)):
 
 
 def plot_logistic_model(df, log_model_x, log_model_y, log_model_params, imgdir, attribution, figsize=(14, 9)):
-    data = df.groupby(df.date.dt.date)['cases'].sum()
+    data = df.groupby(df.date)['cases'].sum()
     basedate = data.index[0]
     x = data.index
     y = data.values
@@ -442,6 +529,7 @@ def main():
     metro_datafile = os.path.join(datadir, 'tn/metro.json')
     hospitals_datafile = os.path.join(datadir, 'tn/tn-hospitals.geojson')
     nytimes_datafile = os.path.join(datadir, 'ny-times/us-counties.csv')
+    jhu_datafiles = glob.glob(os.path.join(datadir, 'jhu_csse/csse_covid_19_data/csse_covid_19_daily_reports/*.csv'))
     # midas_datafile = os.path.join(datadir, 'midas/parameter_estimates/2019_novel_coronavirus/estimates.csv')
     readme_file = os.path.join(os.path.dirname(__file__), '../README.md')
 
@@ -454,7 +542,7 @@ def main():
     }
 
     # process local TN data
-    knx_df = process_tn_data(fips_datafile, metro_datafile, hospitals_datafile, nytimes_datafile, drive_time=drive_time)
+    knx_df = process_tn_data(fips_datafile, metro_datafile, hospitals_datafile, nytimes_datafile, jhu_datafiles)
 
     # plot cases per county per day
     plot_county_cases_per_day(knx_df, imgdir, attribution)
