@@ -379,16 +379,6 @@ def worst_case_fb_forecast(df, c, d, imgdir, attribution, figsize=(14, 9)):
         plt.savefig(os.path.join(imgdir, 'wc_{:04d}'.format(i)))
         plt.close('all')
 
-    # !ffmpeg
-    # -framerate 2
-    # -i ../imgs/wc_%04d.png
-    # -r 60
-    # -vcodec copy
-    # -acodec copy
-    # -vcodec libx264
-    # -pix_fmt yuv420p
-    # ../imgs/wc.mp4 -y
-
 
 def reorder_legend(df, fig):
     latest = df[df['date'] == df['date'].max()].sort_values(by=['cases'], ascending=False)
