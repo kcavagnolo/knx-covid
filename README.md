@@ -2,7 +2,7 @@
 
 What's the story with COVID19 cases in Knoxville Metro?
 
-**Updated on 2020-04-10T02:20:48.614888+00:00**
+**Updated on 2020-04-10T15:31:18.539549+00:00**
 
 ## Defining Knoxville Metro
 
@@ -79,6 +79,8 @@ ffmpeg -i imgs/wc.mp4 -i imgs/palette.png -filter_complex "[0]fps=2,scale=-1:640
    sonar-scanner
    ```
 
+<iframe src="https://player.vimeo.com/video/406274931" width="640" height="360" frameborder="0" allow="autoplay; fullscreen" allowfullscreen></iframe>
+
 ## Credits
 
 - [Data from The New York Times, based on reports from state and local health agencies](https://github.com/nytimes/covid-19-data)
@@ -92,6 +94,7 @@ ffmpeg -i imgs/wc.mp4 -i imgs/palette.png -filter_complex "[0]fps=2,scale=-1:640
 - [OpenStreetMap road network data](http://www.openstreetmap.org/about/)
 - [Facebook Prophet forecasting](https://github.com/facebook/prophet)
 - [Seaborn data visualization](https://github.com/mwaskom/seaborn)
+- [`gource` source code visualization](https://gource.io/)
 
 ## References
 
