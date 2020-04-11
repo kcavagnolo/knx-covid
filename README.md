@@ -2,7 +2,7 @@
 
 What's the story with COVID19 cases in Knoxville Metro?
 
-**Updated on 2020-04-10T23:18:29.165727+00:00**
+**Updated on 2020-04-11T12:15:51.815514+00:00**
 
 ## Defining Knoxville Metro
 
@@ -79,7 +79,7 @@ ffmpeg -i imgs/wc.mp4 -i imgs/palette.png -filter_complex "[0]fps=2,scale=-1:640
    sonar-scanner
    ```
 
-<iframe src="https://player.vimeo.com/video/406274931" width="640" height="360" frameborder="0" allow="autoplay; fullscreen" allowfullscreen></iframe>
+[![knx-covid](http://img.youtube.com/vi/EdYX3-OZJxs/0.jpg)](http://www.youtube.com/watch?v=EdYX3-OZJxs "knx-covid")
 
 ## Credits
 
