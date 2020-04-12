@@ -439,7 +439,7 @@ def plot_county_cases_per_day(df, imgdir, attribution, figsize=(14, 9)):
 def plot_metro_cases_per_day(df, imgdir, attribution, figsize=(14, 9)):
     data = df.groupby(df.date)['cases'].sum()
     plt.figure(figsize=figsize)
-    ax = data.plot(kind='bar', rot=0)
+    ax = data.plot(kind='bar')
     plt.xlabel('Date')
     ax.set_xticklabels(map(lambda xt: line_format(xt), data.index))
     plt.ylabel('Total Confirmed Cases')
