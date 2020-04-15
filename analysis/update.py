@@ -349,10 +349,10 @@ def worst_case_fb_forecast(df, c, d, imgdir, attribution, figsize=(14, 9)):
     plt.tight_layout()
     plt.savefig(os.path.join(imgdir, 'metro-cases-all-fit-worst.png'))
 
-    # create an animation
+    # create an animation trimming early data successively
     j = round(0.75 * len(cases))
     xmin = df.ds.min()
-    for i in tqdm(range(0, j), desc='Creating animation of worst case scenario evolution'):
+    for i in range(0, j):
         ani_df = df.iloc[i:]
         m = Prophet(growth='logistic', interval_width=0.95)
         m.fit(ani_df)
@@ -378,6 +378,37 @@ def worst_case_fb_forecast(df, c, d, imgdir, attribution, figsize=(14, 9)):
         plt.tight_layout()
         plt.savefig(os.path.join(imgdir, 'wc_{:04d}'.format(i)))
         plt.close('all')
+
+    # create an animation starting w/ first 3 data points
+    xmin = df.ds.min()
+    xmax = max(future.ds)
+    for i in range(3, len(cases) + 1):
+        ani_df = df.iloc[:i]
+        m = Prophet(growth='logistic', interval_width=0.95)
+        m.fit(ani_df)
+        future = m.make_future_dataframe(periods=90)
+        future['cap'] = capacity
+        future['floor'] = 0.0
+        pred = m.predict(future)
+        plt.figure(figsize=figsize)
+        fig = m.plot(pred)
+        _ = add_changepoints_to_plot(fig.gca(), m, pred)
+        plt.xlabel('Date [YYYY-MM-DD]')
+        plt.ylabel('ln(Total Cases)')
+        plt.title('Knoxville Metro COVID19 Forecasted Cumulative Cases -- Updated: {}'.format(time_now()))
+        plt.annotate(attribution['text'], (0, 0), (0, -60),
+                     xycoords='axes fraction',
+                     textcoords='offset points',
+                     fontsize=attribution['fsize'],
+                     color=attribution['color'],
+                     alpha=attribution['alpha']
+                     )
+        plt.xlim(xmin, xmax)
+        plt.ylim(-1, 15)
+        plt.tight_layout()
+        plt.savefig(os.path.join(imgdir, 'wc_ev_{:04d}'.format(i)))
+        plt.close('all')
+
 
 
 def reorder_legend(df, fig):

@@ -19,7 +19,7 @@ if (!mapboxgl.supported()) {
     var lat = 35.960750;
     var profile = 'driving';
     var minutes = 60;
-    var colors = ['#1b9e77', '#d95f02', '#7570b3', '#e7298a', '#66a61e']
+    var colors = ['#1b9e77', '#7570b3', '#d95f02', '#e7298a', '#66a61e']
     var hoverId = null;
     var popup = new mapboxgl.Popup({
         closeButton: false,
@@ -37,7 +37,7 @@ if (!mapboxgl.supported()) {
     // load mapbox gl
     var map = new mapboxgl.Map({
         container: 'map',
-        style: 'mapbox://styles/mapbox/dark-v10?optimize=true',
+        style: 'mapbox://styles/kcavagnolo/ck91bhesj11jf1imz3ppxbky1?optimize=true',
         center: [lon, lat],
         zoom: 8,
         attributionControl: false,
@@ -300,8 +300,10 @@ if (!mapboxgl.supported()) {
         // add hospitals
         addHospitals();
 
-        // add HRR
+        /*  add HRR
+        geojson crs is not wgs84, weird offset
         addHrr();
+        */
 
         // add isochrone
         getIso();
