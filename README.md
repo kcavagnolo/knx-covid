@@ -2,7 +2,7 @@
 
 What's the story with COVID19 cases in Knoxville Metro?
 
-**Updated on 2020-04-15T14:13:51.865214+00:00**
+**Updated on 2020-04-16T12:32:51.337125+00:00**
 
 ## Defining Knoxville Metro
 
@@ -81,7 +81,15 @@ ffmpeg -i imgs/wc.mp4 -i imgs/palette.png -filter_complex "[0]fps=2,scale=-1:640
    sonar-scanner
    ```
 
+A video of how the source code has evolved:
+
 [![knx-covid](http://img.youtube.com/vi/EdYX3-OZJxs/0.jpg)](http://www.youtube.com/watch?v=EdYX3-OZJxs "knx-covid")
+
+Created using `gource`:
+
+```bash
+gource -s 1 -1280x720 -o - | ffmpeg -y -r 60 -f image2pipe -vcodec ppm -i - -vcodec libx264 -preset ultrafast -pix_fmt yuv420p -crf 1 -threads 0 -bf 0 gource.mp4
+```
 
 ## Credits
 
