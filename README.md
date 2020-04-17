@@ -81,7 +81,7 @@ ffmpeg -i imgs/wc.mp4 -i imgs/palette.png -filter_complex "[0]fps=2,scale=-1:640
 
 A video of how the source code has evolved:
 
-[![knx-covid](http://img.youtube.com/vi/EdYX3-OZJxs/0.jpg)](http://www.youtube.com/watch?v=EdYX3-OZJxs "knx-covid")
+[![knx-covid](https://img.youtube.com/vi/4EMfJScKXHw/0.jpg)](https://youtu.be/4EMfJScKXHw "knx-covid")
 
 Created using `gource`:
 
