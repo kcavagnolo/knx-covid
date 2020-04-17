@@ -6,7 +6,7 @@ What's the story with COVID19 cases in Knoxville Metro?
 
 ## Defining Knoxville Metro
 
-Before making an estimate, let us first define what data interests us. In this case, consider the Knoxville metro area as all locations within a 30 minute or 60 minute drive time, aka, the catchment area. [See details on this map.](https://www.kcavagnolo.com/knx-covid/) The isochrone you see on the map (green overlay) covers several counties (orange outlines; click for name) and the associated hospitals (pink points). The blue dashed line indicates the Hospital Referral Region defined by the [Center for Medicare & Medicaid Services (CMS)](https://www.cms.gov/) and is provided as a reference point to validate regional coverage for healthcare centered on Knoxville.
+Before making an estimate, let us first define what data interests us. In this case, consider the Knoxville metro area as all locations within a 30 minute or 60 minute drive time, aka, the catchment area. [See details on this map.](https://www.kcavagnolo.com/knx-covid/) The isochrone you see on the map (green overlay) covers several counties (orange outlines; click for a name) and the associated hospitals (pink points).
 
 ## Projections
 
@@ -22,9 +22,7 @@ Worst case scenario: new case growth is [unregulated](https://facebook.github.io
 
 ![Knoxville Metro COVID19 Projected Cumulative Cases](/imgs/metro-cases-all-fit-worst.png)
 
-Based on data provided by [Models of Infectious Disease Agent Study (MIDAS)](https://midasnetwork.us/covid-19/), the rate of COVID cases requiring hospitalization is 10%-20%. The rate of hospitalized cases requiring admittance to an ICU is 5%. The Knoxville Metro area has an [ICU capacity of 295 beds](https://www.wbir.com/article/news/health/coronavirus/knox-co-has-173-icu-beds-all-others-in-our-area-combined-have-131-its-indicative-of-a-broader-problem/51-7727cc22-384c-4e67-8008-ec770b949b25). Assuming the MIDAS rates, and all beds being available, the critical case load which results in all ICU capacity being consumed is 29,500 cases. In the worst case scenario model (as of April 1), this occurs around April 15th.
-
-![Knoxville Metro COVID19 Projected Cumulative Cases](/imgs/wc_ev.gif)
+Based on data provided by [Models of Infectious Disease Agent Study (MIDAS)](https://midasnetwork.us/covid-19/), the rate of COVID cases requiring hospitalization is 10%-20%. The rate of hospitalized cases requiring admittance to an ICU is 5%. The Knoxville Metro area has an [ICU capacity of 295 beds](https://www.wbir.com/article/news/health/coronavirus/knox-co-has-173-icu-beds-all-others-in-our-area-combined-have-131-its-indicative-of-a-broader-problem/51-7727cc22-384c-4e67-8008-ec770b949b25). Assuming the MIDAS rates, and all beds being available, the critical caseload which consumes all ICU capacity is 29,500 cases. In the worst-case scenario model (as of April 1st and before stay-at-home orders), this would have occurred around April 15th.
 
 ![Knoxville Metro COVID19 Projected Cumulative Cases](/imgs/wc.gif)
 
