@@ -64,6 +64,40 @@ class FullPaths(argparse.Action):
             os.path.expanduser(values)))
 
 
+class SuppressStdout(object):
+    """
+    https://github.com/facebook/prophet/issues/223#issuecomment-326455744
+    A context manager for doing a "deep suppression" of stdout and stderr in
+    Python, i.e. will suppress all print, even if the print originates in a
+    compiled C/Fortran sub-function.
+
+    This will not suppress raised exceptions, since exceptions are printed
+    to stderr just before a script exits, and after the context manager has
+    exited (at least, I think that is why it lets exceptions through).
+    """
+
+    def __init__(self):
+        # Open a pair of null files
+        self.null_fds = [os.open(os.devnull, os.O_RDWR) for _ in range(2)]
+
+        # Save the actual stdout (1) and stderr (2) file descriptors.
+        self.save_fds = [os.dup(1), os.dup(2)]
+
+    def __enter__(self):
+        # Assign the null pointers to stdout and stderr.
+        os.dup2(self.null_fds[0], 1)
+        os.dup2(self.null_fds[1], 2)
+
+    def __exit__(self, *_):
+        # Re-assign the real stdout/stderr back to (1) and (2)
+        os.dup2(self.save_fds[0], 1)
+        os.dup2(self.save_fds[1], 2)
+
+        # Close the null files
+        for fd in self.null_fds + self.save_fds:
+            os.close(fd)
+
+
 def time_now():
     return dt.datetime.utcnow().replace(tzinfo=dt.timezone.utc).isoformat()
 
@@ -125,8 +159,7 @@ def parse_arguments():
     return args
 
 
-def process_tn_data(fips_datafile, metro_datafile, hospitals_datafile, nytimes_datafile, jhu_datafiles,
-                    drive_time='60'):
+def process_tn_data(fips_datafile, metro_datafile, hospitals_datafile, nytimes_datafile, jhu_datafiles, drive_time):
     # process fips
     log.info("# Processing TN Data")
     fips_df = pd.read_csv(fips_datafile, encoding="ISO-8859-1")
@@ -290,11 +323,13 @@ def logistic_forecast(knx_df, ndays=0, growth_rate=0, time_horizon=0):
 
 def daily_cases_fb_forecast(df, d, imgdir, attribution, figsize=(14, 9)):
     # fit model
+    log.info("# Fitting daily cases using Prophet")
     cases = df.groupby(df.date)['cases'].sum().diff()
     df = cases.to_frame().reset_index().fillna(0)
     df.columns = ['ds', 'y']
     m = Prophet(interval_width=0.95)
-    m.fit(df)
+    with SuppressStdout():
+        m.fit(df)
     future = m.make_future_dataframe(periods=d)
     pred = m.predict(future)
 
@@ -317,6 +352,7 @@ def daily_cases_fb_forecast(df, d, imgdir, attribution, figsize=(14, 9)):
 
 
 def worst_case_fb_forecast(df, c, d, imgdir, attribution, figsize=(14, 9)):
+    log.info("# Fitting full worst case using Prophet")
     cases = df.groupby(df.date)['cases'].sum()
     df = cases.to_frame().reset_index().fillna(0)
     df.columns = ['ds', 'y']
@@ -326,7 +362,8 @@ def worst_case_fb_forecast(df, c, d, imgdir, attribution, figsize=(14, 9)):
     df['cap'] = capacity
     df['floor'] = 0.0
     m = Prophet(growth='logistic', interval_width=0.95)
-    m.fit(df)
+    with SuppressStdout():
+        m.fit(df)
     future = m.make_future_dataframe(periods=d)
     future['cap'] = capacity
     future['floor'] = 0.0
@@ -349,43 +386,17 @@ def worst_case_fb_forecast(df, c, d, imgdir, attribution, figsize=(14, 9)):
     plt.tight_layout()
     plt.savefig(os.path.join(imgdir, 'metro-cases-all-fit-worst.png'))
 
-    # create an animation trimming early data successively
-    j = round(0.75 * len(cases))
-    xmin = df.ds.min()
-    for i in range(0, j):
-        ani_df = df.iloc[i:]
-        m = Prophet(growth='logistic', interval_width=0.95)
-        m.fit(ani_df)
-        future = m.make_future_dataframe(periods=90)
-        future['cap'] = capacity
-        future['floor'] = 0.0
-        pred = m.predict(future)
-        plt.figure(figsize=figsize)
-        fig = m.plot(pred)
-        _ = add_changepoints_to_plot(fig.gca(), m, pred)
-        plt.xlabel('Date [YYYY-MM-DD]')
-        plt.ylabel('ln(Total Cases)')
-        plt.title('Knoxville Metro COVID19 Forecasted Cumulative Cases -- Updated: {}'.format(time_now()))
-        plt.annotate(attribution['text'], (0, 0), (0, -60),
-                     xycoords='axes fraction',
-                     textcoords='offset points',
-                     fontsize=attribution['fsize'],
-                     color=attribution['color'],
-                     alpha=attribution['alpha']
-                     )
-        plt.xlim(xmin, max(future.ds))
-        plt.ylim(-1, 15)
-        plt.tight_layout()
-        plt.savefig(os.path.join(imgdir, 'wc_{:04d}'.format(i)))
-        plt.close('all')
+    # initialize an img counter
+    imgctr = 0
+    xmin = dt.date(2020, 3, 1)
+    xmax = dt.date(2020, 6, 1)
 
     # create an animation starting w/ first 3 data points
-    xmin = df.ds.min()
-    xmax = max(future.ds)
-    for i in range(3, len(cases) + 1):
+    for i in tqdm(range(3, len(cases) + 1), desc="Fitting FB Prophet df[:i]"):
         ani_df = df.iloc[:i]
         m = Prophet(growth='logistic', interval_width=0.95)
-        m.fit(ani_df)
+        with SuppressStdout():
+            m.fit(ani_df)
         future = m.make_future_dataframe(periods=90)
         future['cap'] = capacity
         future['floor'] = 0.0
@@ -406,9 +417,40 @@ def worst_case_fb_forecast(df, c, d, imgdir, attribution, figsize=(14, 9)):
         plt.xlim(xmin, xmax)
         plt.ylim(-1, 15)
         plt.tight_layout()
-        plt.savefig(os.path.join(imgdir, 'wc_ev_{:04d}'.format(i)))
+        plt.savefig(os.path.join(imgdir, 'wc_{:04d}'.format(imgctr)))
         plt.close('all')
+        imgctr += 1
 
+    # create an animation trimming early data successively
+    j = round(0.75 * len(cases))
+    for i in tqdm(range(0, j), desc="Fitting FB Prophet df[i:]"):
+        ani_df = df.iloc[i:]
+        m = Prophet(growth='logistic', interval_width=0.95)
+        with SuppressStdout():
+            m.fit(ani_df)
+        future = m.make_future_dataframe(periods=90)
+        future['cap'] = capacity
+        future['floor'] = 0.0
+        pred = m.predict(future)
+        plt.figure(figsize=figsize)
+        fig = m.plot(pred)
+        _ = add_changepoints_to_plot(fig.gca(), m, pred)
+        plt.xlabel('Date [YYYY-MM-DD]')
+        plt.ylabel('ln(Total Cases)')
+        plt.title('Knoxville Metro COVID19 Forecasted Cumulative Cases -- Updated: {}'.format(time_now()))
+        plt.annotate(attribution['text'], (0, 0), (0, -60),
+                     xycoords='axes fraction',
+                     textcoords='offset points',
+                     fontsize=attribution['fsize'],
+                     color=attribution['color'],
+                     alpha=attribution['alpha']
+                     )
+        plt.xlim(xmin, xmax)
+        plt.ylim(-1, 15)
+        plt.tight_layout()
+        plt.savefig(os.path.join(imgdir, 'wc_{:04d}'.format(imgctr)))
+        plt.close('all')
+        imgctr += 1
 
 
 def reorder_legend(df, fig):
@@ -554,6 +596,21 @@ def main():
     # midas_datafile = os.path.join(datadir, 'midas/parameter_estimates/2019_novel_coronavirus/estimates.csv')
     readme_file = os.path.join(os.path.dirname(__file__), '../README.md')
 
+    # remove old files
+    log.info("# Removing images")
+    imtypes = ["wc*", "palette*"]
+    for imtype in imtypes:
+        imgfiles = glob.glob(os.path.join(imgdir, imtype))
+        for imgfile in imgfiles:
+            try:
+                os.remove(imgfile)
+            except OSError as e:
+                log.error(e)
+                pass
+
+    # suppress Stan/FB Prophet verbose output
+    logging.getLogger('fbprophet').setLevel(logging.WARNING)
+
     # figure data attribution
     attribution = {
         'text': 'Data from The New York Times, based on reports from state and local health agencies.',
@@ -563,7 +620,8 @@ def main():
     }
 
     # process local TN data
-    knx_df = process_tn_data(fips_datafile, metro_datafile, hospitals_datafile, nytimes_datafile, jhu_datafiles)
+    knx_df = process_tn_data(fips_datafile, metro_datafile, hospitals_datafile, nytimes_datafile, jhu_datafiles,
+                             drive_time)
 
     # plot cases per county per day
     plot_county_cases_per_day(knx_df, imgdir, attribution)

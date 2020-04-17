@@ -2,7 +2,7 @@
 
 What's the story with COVID19 cases in Knoxville Metro?
 
-**Updated on 2020-04-16T12:32:51.337125+00:00**
+**Updated on 2020-04-17T12:51:18.426663+00:00**
 
 ## Defining Knoxville Metro
 
