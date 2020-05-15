@@ -2,7 +2,9 @@
 
 What's the story with COVID19 cases in Knoxville Metro?
 
-**Updated on 2020-05-15T12:15:54.112176+00:00**
+## ABANDONED
+
+**This code is no longer useful. COVID19 testing data is not suited for even simple modeling. Final update on 2020-05-15T12:15:54.112176+00:00**
 
 ## Defining Knoxville Metro
 
