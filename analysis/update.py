@@ -159,6 +159,19 @@ def parse_arguments():
     return args
 
 
+def remove_tmp_files(imgdir):
+    log.info("# Removing images")
+    imtypes = ["wc*", "palette*"]
+    for imtype in imtypes:
+        imgfiles = glob.glob(os.path.join(imgdir, imtype))
+        for imgfile in imgfiles:
+            try:
+                os.remove(imgfile)
+            except OSError as e:
+                log.error(e)
+                pass
+
+
 def process_tn_data(fips_datafile, metro_datafile, hospitals_datafile, nytimes_datafile, jhu_datafiles, drive_time):
     # process fips
     log.info("# Processing TN Data")
@@ -597,16 +610,7 @@ def main():
     readme_file = os.path.join(os.path.dirname(__file__), '../README.md')
 
     # remove old files
-    log.info("# Removing images")
-    imtypes = ["wc*", "palette*"]
-    for imtype in imtypes:
-        imgfiles = glob.glob(os.path.join(imgdir, imtype))
-        for imgfile in imgfiles:
-            try:
-                os.remove(imgfile)
-            except OSError as e:
-                log.error(e)
-                pass
+    remove_tmp_files(imgdir)
 
     # suppress Stan/FB Prophet verbose output
     logging.getLogger('fbprophet').setLevel(logging.WARNING)
@@ -630,19 +634,19 @@ def main():
     plot_metro_cases_per_day(knx_df, imgdir, attribution)
 
     # best case logistic fit
-    log_model_x, log_model_y, log_model_params = logistic_forecast(knx_df, ndays, growth_rate, time_horizon)
+    #log_model_x, log_model_y, log_model_params = logistic_forecast(knx_df, ndays, growth_rate, time_horizon)
 
     # plot logistic model best case scenario
-    plot_logistic_model(knx_df, log_model_x, log_model_y, log_model_params, imgdir, attribution)
+    #plot_logistic_model(knx_df, log_model_x, log_model_y, log_model_params, imgdir, attribution)
 
     # prophet forecast of daily cases
-    daily_cases_fb_forecast(knx_df, log_model_params['days_out'], imgdir, attribution)
+    #daily_cases_fb_forecast(knx_df, log_model_params['days_out'], imgdir, attribution)
 
     # process midas data
     # midas_params = process_midas_data(midas_datafile)
 
     # worst case prophet model
-    worst_case_fb_forecast(knx_df, knx_capacity, log_model_params['days_out'], imgdir, attribution)
+    #worst_case_fb_forecast(knx_df, knx_capacity, log_model_params['days_out'], imgdir, attribution)
 
     # update the readme
     log.info("# Updating README")
