@@ -518,6 +518,15 @@ def plot_county_cases_per_day(df, imgdir, attribution, figsize=(14, 9)):
                  color=attribution['color'],
                  alpha=attribution['alpha']
                  )
+    safer_home_knx = dt.date(2020, 3, 23)
+    safer_home_tn = dt.date(2020, 4, 2)
+    knx_phase1 = dt.date(2020, 5, 1)
+    plt.axvline(safer_home_knx, color='red', linewidth=2)
+    plt.annotate('Knox\nCloses', (safer_home_knx, 400))
+    plt.axvline(safer_home_tn, color='red', linewidth=2)
+    plt.annotate('State\nCloses', (safer_home_tn, 500))
+    plt.axvline(knx_phase1, color='green', linewidth=2)
+    plt.annotate('Knox\nReopens', (knx_phase1, 400))
     plt.tight_layout()
     plt.savefig(os.path.join(imgdir, 'metro-cases-county.png'))
 
