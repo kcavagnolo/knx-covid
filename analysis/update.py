@@ -402,7 +402,7 @@ def worst_case_fb_forecast(df, c, d, imgdir, attribution, figsize=(14, 9)):
     # initialize an img counter
     imgctr = 0
     xmin = dt.date(2020, 3, 1)
-    xmax = dt.date(2020, 6, 1)
+    xmax = dt.date(2020, 7, 1)
 
     # create an animation starting w/ first 3 data points
     for i in tqdm(range(3, len(cases) + 1), desc="Fitting FB Prophet df[:i]"):
@@ -476,7 +476,7 @@ def reorder_legend(df, fig):
     labels = []
     handles = []
     for c in latest:
-        labels.append(c[0].capitalize() + ': {:.0f} case(s)'.format(c[1]))
+        labels.append(c[0].capitalize() + ': {:.0f}'.format(c[1]))
         handles.append(legend_entries[c[0]])
     return handles, labels
 
@@ -502,14 +502,14 @@ def plot_county_cases_per_day(df, imgdir, attribution, figsize=(14, 9)):
     plt.subplots(figsize=figsize)
     fig = sns.lineplot(x='date', y='cases',
                        hue='county',
-                       markers=True,
-                       marker='o',
+                       # markers=True,
+                       # marker='o',
                        dashes=False,
                        data=df)
     handles, labels = reorder_legend(df, fig)
     plt.legend(handles, labels, bbox_to_anchor=(1, 1), loc=2)
     plt.xlabel('Date [YYYY-MM-DD]')
-    plt.ylabel('Total Confirmed Cases')
+    plt.ylabel('Cumulative Total Confirmed Cases')
     plt.title('Knoxville Metro COVID19 Cumulative Cases by County -- Updated: {}'.format(time_now()))
     plt.annotate(attribution['text'], (0, 0), (0, -60),
                  xycoords='axes fraction',
@@ -521,12 +521,12 @@ def plot_county_cases_per_day(df, imgdir, attribution, figsize=(14, 9)):
     safer_home_knx = dt.date(2020, 3, 23)
     safer_home_tn = dt.date(2020, 4, 2)
     knx_phase1 = dt.date(2020, 5, 1)
-    plt.axvline(safer_home_knx, color='red', linewidth=2)
-    plt.annotate('Knox\nCloses', (safer_home_knx, 400))
-    plt.axvline(safer_home_tn, color='red', linewidth=2)
-    plt.annotate('State\nCloses', (safer_home_tn, 500))
-    plt.axvline(knx_phase1, color='green', linewidth=2)
-    plt.annotate('Knox\nReopens', (knx_phase1, 400))
+    plt.axvline(safer_home_knx, color='red', linewidth=2, linestyle=':')
+    plt.annotate(' Knox\n Closes', (safer_home_knx, 450))
+    plt.axvline(safer_home_tn, color='orange', linewidth=2, linestyle=':')
+    plt.annotate(' State\n Safer@Home', (safer_home_tn, 450))
+    plt.axvline(knx_phase1, color='green', linewidth=2, linestyle=':')
+    plt.annotate(' Knox\n Reopens', (knx_phase1, 450))
     plt.tight_layout()
     plt.savefig(os.path.join(imgdir, 'metro-cases-county.png'))
 
@@ -566,16 +566,16 @@ def plot_logistic_model(df, log_model_x, log_model_y, log_model_params, imgdir, 
     plt.ylabel('Total Cases')
     plt.title('Knoxville Metro COVID19 Projected Cumulative Cases -- Updated: {}'.format(time_now()))
     plt.legend()
-    plt.annotate(
-        'Max Cases: {:.0f}\n'
-        'Approx. {:.1f}x current\n'
-        'Rollover Date: {}'.format(max(log_model_y),
-                                   log_model_params['ratio'],
-                                   log_model_params['rollover_date']),
-        xytext=(0.75, 0.75), textcoords='figure fraction',
-        horizontalalignment='right', verticalalignment='top',
-        xy=(log_model_params['rollover_date'], log_model_params['rollover_date_coords'][1]), xycoords='data',
-        arrowprops=dict(facecolor='black', shrink=0.05))
+    # plt.annotate(
+    #     'Max Cases: {:.0f}\n'
+    #     'Approx. {:.1f}x current\n'
+    #     'Rollover Date: {}'.format(max(log_model_y),
+    #                                log_model_params['ratio'],
+    #                                log_model_params['rollover_date']),
+    #     xytext=(0.75, 0.75), textcoords='figure fraction',
+    #     horizontalalignment='right', verticalalignment='top',
+    #     xy=(log_model_params['rollover_date'], log_model_params['rollover_date_coords'][1]), xycoords='data',
+    #     arrowprops=dict(facecolor='black', shrink=0.05))
     plt.annotate(attribution['text'], (0, 0), (0, -60),
                  xycoords='axes fraction',
                  textcoords='offset points',
@@ -626,7 +626,7 @@ def main():
 
     # figure data attribution
     attribution = {
-        'text': 'Data from The New York Times, based on reports from state and local health agencies.',
+        'text': 'COVID-19 Data Repository by the Center for Systems Science and Engineering (CSSE) at Johns Hopkins University',
         'fsize': 10,
         'color': '#000000',
         'alpha': 0.33
@@ -643,19 +643,19 @@ def main():
     plot_metro_cases_per_day(knx_df, imgdir, attribution)
 
     # best case logistic fit
-    #log_model_x, log_model_y, log_model_params = logistic_forecast(knx_df, ndays, growth_rate, time_horizon)
+    log_model_x, log_model_y, log_model_params = logistic_forecast(knx_df, ndays, growth_rate, time_horizon)
 
     # plot logistic model best case scenario
-    #plot_logistic_model(knx_df, log_model_x, log_model_y, log_model_params, imgdir, attribution)
+    plot_logistic_model(knx_df, log_model_x, log_model_y, log_model_params, imgdir, attribution)
 
     # prophet forecast of daily cases
-    #daily_cases_fb_forecast(knx_df, log_model_params['days_out'], imgdir, attribution)
+    daily_cases_fb_forecast(knx_df, log_model_params['days_out'], imgdir, attribution)
 
     # process midas data
     # midas_params = process_midas_data(midas_datafile)
 
     # worst case prophet model
-    #worst_case_fb_forecast(knx_df, knx_capacity, log_model_params['days_out'], imgdir, attribution)
+    worst_case_fb_forecast(knx_df, knx_capacity, log_model_params['days_out'], imgdir, attribution)
 
     # update the readme
     log.info("# Updating README")
