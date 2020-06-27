@@ -532,20 +532,38 @@ def plot_county_cases_per_day(df, imgdir, attribution, figsize=(14, 9)):
 
 
 def plot_metro_cases_per_day(df, imgdir, attribution, figsize=(14, 9)):
-    data = df.groupby(df.date)['cases'].sum()
-    plt.figure(figsize=figsize)
-    ax = data.plot(kind='bar')
-    plt.xlabel('Date')
-    ax.set_xticklabels(map(lambda xt: line_format(xt), data.index))
+    data = df.groupby(df.date)['cases'].sum().reset_index()
+    plt.subplots(figsize=figsize)
+    fig = sns.lineplot(x='date', y='cases',
+                       markers=True,
+                       marker='o',
+                       markersize=5,
+                       dashes=False,
+                       data=data)
+    plt.xlabel('Date [YYYY-MM-DD]')
     plt.ylabel('Total Confirmed Cases')
-    plt.title('Knoxville Metro COVID19 Cumulative Cases -- Updated: {}'.format(time_now()))
+    plt.title('Knoxville Metro COVID19 Cumulative Cases')
     plt.annotate(attribution['text'], (0, 0), (0, -60),
                  xycoords='axes fraction',
                  textcoords='offset points',
                  fontsize=attribution['fsize'],
                  color=attribution['color'],
                  alpha=attribution['alpha']
-                 )
+    )
+    # data = df.groupby(df.date)['cases'].sum()
+    # plt.figure(figsize=figsize)
+    # ax = data.plot(kind='bar')
+    # plt.xlabel('Date')
+    # ax.set_xticklabels(map(lambda xt: line_format(xt), data.index))
+    # plt.ylabel('Total Confirmed Cases')
+    # plt.title('Knoxville Metro COVID19 Cumulative Cases -- Updated: {}'.format(time_now()))
+    # plt.annotate(attribution['text'], (0, 0), (0, -60),
+    #              xycoords='axes fraction',
+    #              textcoords='offset points',
+    #              fontsize=attribution['fsize'],
+    #              color=attribution['color'],
+    #              alpha=attribution['alpha']
+    #              )
     plt.tight_layout()
     plt.savefig(os.path.join(imgdir, 'metro-cases-all.png'))
 
@@ -560,7 +578,7 @@ def plot_logistic_model(df, log_model_x, log_model_y, log_model_params, imgdir, 
     plt.scatter(x, y, label='Confirmed')
     plt.plot(log_model_x, log_model_y, 'r-', label='Projected')
     ticks = np.arange(min(log_model_x), max(log_model_x), step=7)
-    plt.xticks(ticks)
+    plt.xticks(ticks, rotation=90)
     ax.set_xticklabels(map(lambda xt: line_format(xt.astype(dt.datetime)), ticks))
     plt.xlabel('Date')
     plt.ylabel('Total Cases')
@@ -576,7 +594,7 @@ def plot_logistic_model(df, log_model_x, log_model_y, log_model_params, imgdir, 
     #     horizontalalignment='right', verticalalignment='top',
     #     xy=(log_model_params['rollover_date'], log_model_params['rollover_date_coords'][1]), xycoords='data',
     #     arrowprops=dict(facecolor='black', shrink=0.05))
-    plt.annotate(attribution['text'], (0, 0), (0, -60),
+    plt.annotate(attribution['text'], (0, 0), (0, -70),
                  xycoords='axes fraction',
                  textcoords='offset points',
                  fontsize=attribution['fsize'],
