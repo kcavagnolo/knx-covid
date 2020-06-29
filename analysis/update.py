@@ -155,6 +155,10 @@ def parse_arguments():
                         type=float,
                         default=1e6,
                         help="KNX metro population")
+    parser.add_argument("-f", "--forecast",
+                        type=bool,
+                        default=False,
+                        help="Run Prophet forecasting")
     args = parser.parse_args()
     return args
 
@@ -232,6 +236,9 @@ def process_tn_data(fips_datafile, metro_datafile, hospitals_datafile, nytimes_d
     knx_df.fillna(0, inplace=True)
     knx_df["cases"] = knx_df[["jcases", "ncases"]].values.max(1)
     knx_df["deaths"] = knx_df[["jdeaths", "ndeaths"]].values.max(1)
+
+    # filter
+    # knx_df = knx_df[knx_df['date'] >= dt.date(2020, 5, 1)]
 
     return knx_df
 
@@ -534,7 +541,7 @@ def plot_county_cases_per_day(df, imgdir, attribution, figsize=(14, 9)):
 def plot_metro_cases_per_day(df, imgdir, attribution, figsize=(14, 9)):
     data = df.groupby(df.date)['cases'].sum().reset_index()
     plt.subplots(figsize=figsize)
-    fig = sns.lineplot(x='date', y='cases',
+    _ = sns.lineplot(x='date', y='cases',
                        markers=True,
                        marker='o',
                        markersize=5,
@@ -549,7 +556,7 @@ def plot_metro_cases_per_day(df, imgdir, attribution, figsize=(14, 9)):
                  fontsize=attribution['fsize'],
                  color=attribution['color'],
                  alpha=attribution['alpha']
-    )
+                 )
     # data = df.groupby(df.date)['cases'].sum()
     # plt.figure(figsize=figsize)
     # ax = data.plot(kind='bar')
@@ -575,7 +582,7 @@ def plot_logistic_model(df, log_model_x, log_model_y, log_model_params, imgdir, 
     y = data.values
     log_model_x = np.array([basedate + dt.timedelta(days=i) for i in range(len(log_model_x))])
     fig, ax = plt.subplots(figsize=figsize)
-    plt.scatter(x, y, label='Confirmed')
+    plt.scatter(x, y, label='Confirmed', marker='o', s=5)
     plt.plot(log_model_x, log_model_y, 'r-', label='Projected')
     ticks = np.arange(min(log_model_x), max(log_model_x), step=7)
     plt.xticks(ticks, rotation=90)
@@ -626,6 +633,7 @@ def main():
     growth_rate = args.growth_rate
     time_horizon = args.time_horizon
     knx_capacity = args.population
+    forecast = args.forecast
 
     # file definitions
     fips_datafile = os.path.join(datadir, 'tn/fips.csv')
@@ -633,7 +641,7 @@ def main():
     hospitals_datafile = os.path.join(datadir, 'tn/tn-hospitals.geojson')
     nytimes_datafile = os.path.join(datadir, 'ny-times/us-counties.csv')
     jhu_datafiles = glob.glob(os.path.join(datadir, 'jhu_csse/csse_covid_19_data/csse_covid_19_daily_reports/*.csv'))
-    # midas_datafile = os.path.join(datadir, 'midas/parameter_estimates/2019_novel_coronavirus/estimates.csv')
+    midas_datafile = os.path.join(datadir, 'midas/parameter_estimates/2019_novel_coronavirus/estimates.csv')
     readme_file = os.path.join(os.path.dirname(__file__), '../README.md')
 
     # remove old files
@@ -644,7 +652,7 @@ def main():
 
     # figure data attribution
     attribution = {
-        'text': 'COVID-19 Data Repository by the Center for Systems Science and Engineering (CSSE) at Johns Hopkins University',
+        'text': 'Data from the Center for Systems Science and Engineering (CSSE) at Johns Hopkins University (JHU)',
         'fsize': 10,
         'color': '#000000',
         'alpha': 0.33
@@ -666,14 +674,17 @@ def main():
     # plot logistic model best case scenario
     plot_logistic_model(knx_df, log_model_x, log_model_y, log_model_params, imgdir, attribution)
 
-    # prophet forecast of daily cases
-    daily_cases_fb_forecast(knx_df, log_model_params['days_out'], imgdir, attribution)
+    # run forecasts
+    if forecast:
 
-    # process midas data
-    # midas_params = process_midas_data(midas_datafile)
+        # prophet forecast of daily cases
+        daily_cases_fb_forecast(knx_df, log_model_params['days_out'], imgdir, attribution)
 
-    # worst case prophet model
-    worst_case_fb_forecast(knx_df, knx_capacity, log_model_params['days_out'], imgdir, attribution)
+        # process midas data
+        midas_params = process_midas_data(midas_datafile)
+
+        # worst case prophet model
+        worst_case_fb_forecast(knx_df, knx_capacity, log_model_params['days_out'], imgdir, attribution)
 
     # update the readme
     log.info("# Updating README")
