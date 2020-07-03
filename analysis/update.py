@@ -238,7 +238,7 @@ def process_tn_data(fips_datafile, metro_datafile, hospitals_datafile, nytimes_d
     knx_df["deaths"] = knx_df[["jdeaths", "ndeaths"]].values.max(1)
 
     # filter
-    # knx_df = knx_df[knx_df['date'] >= dt.date(2020, 5, 1)]
+    #knx_df = knx_df[knx_df['date'] >= dt.date(2020, 5, 22)]
 
     return knx_df
 
