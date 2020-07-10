@@ -238,7 +238,7 @@ def process_tn_data(fips_datafile, metro_datafile, hospitals_datafile, nytimes_d
     knx_df["deaths"] = knx_df[["jdeaths", "ndeaths"]].values.max(1)
 
     # filter
-    #knx_df = knx_df[knx_df['date'] >= dt.date(2020, 5, 22)]
+    # knx_df = knx_df[knx_df['date'] >= dt.date(2020, 5, 22)]
 
     return knx_df
 
@@ -371,20 +371,20 @@ def daily_cases_fb_forecast(df, d, imgdir, attribution, figsize=(14, 9)):
     plt.savefig(os.path.join(imgdir, 'metro-cases-all-daily-forecasted.png'))
 
 
-def worst_case_fb_forecast(df, c, d, imgdir, attribution, figsize=(14, 9)):
+def worst_case_fb_forecast(df, capacity, days_out, imgdir, attribution, figsize=(14, 9)):
     log.info("# Fitting full worst case using Prophet")
     cases = df.groupby(df.date)['cases'].sum()
     df = cases.to_frame().reset_index().fillna(0)
     df.columns = ['ds', 'y']
     df['y'] = np.log(df['y'])
     df = df.replace([np.inf, -np.inf], 0)
-    capacity = np.log(c)
+    capacity = np.log(capacity)
     df['cap'] = capacity
     df['floor'] = 0.0
     m = Prophet(growth='logistic', interval_width=0.95)
     with SuppressStdout():
         m.fit(df)
-    future = m.make_future_dataframe(periods=d)
+    future = m.make_future_dataframe(periods=days_out)
     future['cap'] = capacity
     future['floor'] = 0.0
     pred = m.predict(future)
@@ -409,7 +409,7 @@ def worst_case_fb_forecast(df, c, d, imgdir, attribution, figsize=(14, 9)):
     # initialize an img counter
     imgctr = 0
     xmin = dt.date(2020, 3, 1)
-    xmax = dt.date(2020, 7, 1)
+    xmax = dt.date.today() + dt.timedelta(days=days_out)
 
     # create an animation starting w/ first 3 data points
     for i in tqdm(range(3, len(cases) + 1), desc="Fitting FB Prophet df[:i]"):
@@ -529,11 +529,11 @@ def plot_county_cases_per_day(df, imgdir, attribution, figsize=(14, 9)):
     safer_home_tn = dt.date(2020, 4, 2)
     knx_phase1 = dt.date(2020, 5, 1)
     plt.axvline(safer_home_knx, color='red', linewidth=2, linestyle=':')
-    plt.annotate(' Knox\n Closes', (safer_home_knx, 450))
+    plt.annotate(' Knox Cty\n Closes', (safer_home_knx, 450))
     plt.axvline(safer_home_tn, color='orange', linewidth=2, linestyle=':')
     plt.annotate(' State\n Safer@Home', (safer_home_tn, 450))
     plt.axvline(knx_phase1, color='green', linewidth=2, linestyle=':')
-    plt.annotate(' Knox\n Reopens', (knx_phase1, 450))
+    plt.annotate(' KnoxCty \n Reopens', (knx_phase1, 450))
     plt.tight_layout()
     plt.savefig(os.path.join(imgdir, 'metro-cases-county.png'))
 
@@ -542,11 +542,11 @@ def plot_metro_cases_per_day(df, imgdir, attribution, figsize=(14, 9)):
     data = df.groupby(df.date)['cases'].sum().reset_index()
     plt.subplots(figsize=figsize)
     _ = sns.lineplot(x='date', y='cases',
-                       markers=True,
-                       marker='o',
-                       markersize=5,
-                       dashes=False,
-                       data=data)
+                     markers=True,
+                     marker='o',
+                     markersize=5,
+                     dashes=False,
+                     data=data)
     plt.xlabel('Date [YYYY-MM-DD]')
     plt.ylabel('Total Confirmed Cases')
     plt.title('Knoxville Metro COVID19 Cumulative Cases')
@@ -676,7 +676,6 @@ def main():
 
     # run forecasts
     if forecast:
-
         # prophet forecast of daily cases
         daily_cases_fb_forecast(knx_df, log_model_params['days_out'], imgdir, attribution)
 
